@@ -2,12 +2,13 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
-import LoginPage from '@/components/pages/Login'
+import { AppRoutes } from './routes/AppRoutes'
+// import { SignUpForm } from './components/auth-forms'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <LoginPage />
+      <AppRoutes />
     </BrowserRouter>
   </StrictMode>,
 )

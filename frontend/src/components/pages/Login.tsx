@@ -1,11 +1,12 @@
 import { useId, useState, type FormEvent } from "react"
 import { motion } from "framer-motion"
-import { CircleUserRound, LoaderCircle, ShieldCheck } from "lucide-react"
+import { LoaderCircle } from "lucide-react"
 import { authClient } from "../../lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Dashboard } from "./menu/Dashboard"
 
 function App() {
   const { data: session, isPending: isLoading } = authClient.useSession()
@@ -48,44 +49,7 @@ function App() {
   }
 
   if (session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.08),_transparent_38%),linear-gradient(180deg,_#f8fafc_0%,_#ffffff_100%)] px-4">
-        <motion.div
-          className="w-full max-w-md rounded-3xl border border-border bg-background/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur"
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex size-12 items-center justify-center rounded-2xl border border-border bg-muted text-foreground">
-              <CircleUserRound className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Signed in</p>
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                Welcome back, {session.user.name}
-              </h1>
-            </div>
-          </div>
-          <div className="mt-6 rounded-2xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2 text-foreground">
-              <ShieldCheck className="h-4 w-4" />
-              Session active
-            </div>
-            <p className="mt-2 leading-6">
-              You are already authenticated. Use sign out if you want to switch accounts.
-            </p>
-          </div>
-          <Button
-            onClick={() => authClient.signOut()}
-            variant="destructive"
-            className="mt-2 w-full"
-          >
-            Sign out
-          </Button>
-        </motion.div>
-      </div>
-    )
+    return <Dashboard />
   }
 
   return (
@@ -113,6 +77,7 @@ function App() {
             <div className="space-y-2">
               <Label htmlFor={`${formId}-email`}>Email</Label>
               <Input
+              className="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 id={`${formId}-email`}
                 placeholder="enter your email"
                 type="email"
