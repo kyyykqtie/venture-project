@@ -35,6 +35,7 @@ import {
   Shield,
   Settings,
   Users,
+  LogOut,
 } from "lucide-react"
 
 import { NavLink, Outlet, useLocation } from "react-router-dom"
@@ -223,8 +224,22 @@ export function SidebarDemo() {
                     >
                       <Settings className="size-4" />
                       <span>Settings</span>
+                      
                     </NavLink>
+                 
                   </DropdownMenuItem>
+
+                     <DropdownMenuItem asChild> 
+                    <NavLink
+                    to="/"
+                    className="flex w-full items-center gap-2"
+                    onClick={() => authClient.signOut()}
+                  >
+                    <LogOut className="size-4" />
+                    <span>Sign Out</span>
+                     
+                    </NavLink>
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarGroup>
