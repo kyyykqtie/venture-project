@@ -1,4 +1,3 @@
-import { authClient } from "@/lib/auth-client"
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -159,4 +158,9 @@ export  function UserProvisioningPage() {
 }
 
 export default UserProvisioningPage
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function provisionAccount(_arg0: { email: string; username: string; password: string; department: string }) {
+    throw new Error("Function not implemented.")
+}
 

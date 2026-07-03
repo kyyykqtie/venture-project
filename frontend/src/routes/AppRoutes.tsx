@@ -7,6 +7,7 @@ import RolesPermissionsPage from "@/components/pages/menu/RolesPermissions"
 import SettingsPage from "@/components/pages/Settings"
 import LoginPage from "@/components/pages/Login"
 import { Route, Routes } from "react-router-dom"
+import { ProtectedRoute } from "@/components/ProtectedRoute"
 
 function DashboardHome() {
   return (
@@ -25,14 +26,16 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route element={<Dashboard />}>
-        <Route path="/dashboard" element={<DashboardHome />} />
-        <Route path="/allrequest" element={<Allrequest />} />
-        <Route path="/myrequest" element={<MyRequest />} />
-        <Route path="/create-request" element={<CreateRequestPage />} />
-        <Route path="/user-provisioning" element={<UserProvisioningPage />} />
-        <Route path="/roles-permissions" element={<RolesPermissionsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/dashboard" element={<DashboardHome />} />
+          <Route path="/allrequest" element={<Allrequest />} />
+          <Route path="/myrequest" element={<MyRequest />} />
+          <Route path="/create-request" element={<CreateRequestPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/user-provisioning" element={<UserProvisioningPage />} />
+              <Route path="/roles-permissions" element={<RolesPermissionsPage />} />
+            </Route>  
+          <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
-  )
+  );
 }
