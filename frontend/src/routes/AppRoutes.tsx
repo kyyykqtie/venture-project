@@ -1,4 +1,4 @@
-import { Dashboard } from "@/components/pages/menu/Dashboard"
+import { Dashboard, SuperAdminDashboardPage } from "@/components/pages/menu/Dashboard"
 import Allrequest from "@/components/pages/menu/AllRequests"
 import MyRequest from "@/components/pages/menu/MyRequests"
 import {
@@ -22,17 +22,6 @@ import LoginPage from "@/components/pages/Login"
 import { Navigate, Route, Routes } from "react-router-dom"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 
-function DashboardHome() {
-  return (
-    <div className="flex h-full w-full flex-col items-center justify-center text-center">
-      <h1 className="mb-4 text-4xl font-bold">Dashboard</h1>
-      <p className="text-lg text-gray-600">
-        Choose a section from the sidebar to continue.
-      </p>
-    </div>
-  )
-}
-
 export function AppRoutes() {
   return (
     <Routes>
@@ -41,7 +30,7 @@ export function AppRoutes() {
 
       {/* DASHBOARD LAYOUT */}
       <Route element={<Dashboard />}>
-        <Route path="/dashboard" element={<DashboardHome />} />
+        <Route path="/dashboard" element={<SuperAdminDashboardPage />} />
         <Route path="/allrequest" element={<Navigate to="/requests/all" replace />} />
         <Route path="/myrequest" element={<Navigate to="/requests/my" replace />} />
         <Route path="/create-request" element={<Navigate to="/requests/new" replace />} />

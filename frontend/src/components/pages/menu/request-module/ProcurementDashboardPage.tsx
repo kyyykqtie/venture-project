@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
+import { type DepartmentName } from "@/components/ui/Badges"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ModulePageShell, procurementRequests, type DepartmentName, type ProcurementStage } from "./workflow"
-import { Clock3, Filter, Search } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { ModulePageShell, procurementRequests, type ProcurementStage } from "./workflow"
+import { ArrowRight, BriefcaseBusiness, Clock3, Coins, Filter, Search, SearchX, Sparkles } from "lucide-react"
 
 const boardColumns: ProcurementStage[] = ["Ready for Canvass", "Canvassing", "PO Generated", "Received"]
 
@@ -49,8 +51,6 @@ export function ProcurementDashboardPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<"All Departments" | DepartmentName>("All Departments")
   const [searchTerm, setSearchTerm] = useState("")
 
-  const departments = useMemo(() => ["All Departments", ...Object.keys(departmentConfig)], [])
-
   const filteredRequests = procurementRequests.filter((request) => {
     const matchesDepartment = selectedDepartment === "All Departments" || request.department === selectedDepartment
     const search = searchTerm.trim().toLowerCase()
@@ -64,6 +64,28 @@ export function ProcurementDashboardPage() {
   const activeCount = filteredRequests.length
   const activeDepartments = new Set(filteredRequests.map((request) => request.department)).size
   const totalAmount = filteredRequests.reduce((sum, request) => sum + moneyToNumber(request.amount), 0)
+  const hasActiveFilters = searchTerm.trim().length > 0 || selectedDepartment !== "All Departments"
+
+  const summaryCards = [
+    {
+      label: "Active requests",
+      value: activeCount.toString(),
+      hint: "Ready for next action",
+      icon: BriefcaseBusiness,
+    },
+    {
+      label: "Visible departments",
+      value: activeDepartments.toString(),
+      hint: "Filtered by current scope",
+      icon: Sparkles,
+    },
+    {
+      label: "Total value",
+      value: new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 0 }).format(totalAmount),
+      hint: "Across the current view",
+      icon: Coins,
+    },
+  ]
 
   return (
     <ModulePageShell
@@ -81,37 +103,80 @@ export function ProcurementDashboardPage() {
         </div>
       }
     >
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* BACKEND TODO: fetch procurement board data from procurement_requests and enforce RBAC visibility here. */}
-          <Button
-            type="button"
-            variant={selectedDepartment === "All Departments" ? "default" : "outline"}
-            size="sm"
-            className="rounded-full px-4"
-            onClick={() => setSelectedDepartment("All Departments")}
-          >
-            <Filter className="mr-2 size-4" />
-            All departments
-          </Button>
-          {Object.entries(departmentConfig).map(([key, config]) => {
-            const department = key as DepartmentName
-            const selected = selectedDepartment === department
+      <div className="space-y-5">
+       
+
+        <div className="grid gap-3 md:grid-cols-3">
+          {summaryCards.map((item) => {
+            const Icon = item.icon
 
             return (
-              <Button
-                key={department}
-                type="button"
-                variant="outline"
-                size="sm"
-                className={`rounded-full border px-4 ${config.chip} ${selected ? "shadow-sm" : ""}`}
-                onClick={() => setSelectedDepartment(department)}
-              >
-                <span className={`mr-2 size-2 rounded-full ${config.dot}`} />
-                {config.label}
-              </Button>
+              <Card key={item.label} className="border-border/70 bg-card/80 ">
+                <CardContent className="flex items-start justify-between gap-3 p-4">
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">{item.label}</p>
+                    <p className="text-xl font-semibold tracking-tight text-foreground">{item.value}</p>
+                    <p className="text-xs text-muted-foreground">{item.hint}</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-100 p-2 text-slate-700">
+                    <Icon className="size-4" />
+                  </div>
+                </CardContent>
+              </Card>
             )
           })}
+        </div>
+
+        <div className="rounded-[24px] border border-border/70 bg-background/80 p-4 ">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* BACKEND TODO: fetch procurement board data from procurement_requests and enforce RBAC visibility here. */}
+              <Button
+                type="button"
+                variant={selectedDepartment === "All Departments" ? "default" : "outline"}
+                size="sm"
+                className="rounded-full px-4"
+                onClick={() => setSelectedDepartment("All Departments")}
+              >
+                <Filter className="mr-2 size-4" />
+                All departments
+              </Button>
+              {Object.entries(departmentConfig).map(([key, config]) => {
+                const department = key as DepartmentName
+                const selected = selectedDepartment === department
+
+                return (
+                  <Button
+                    key={department}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn("rounded-full border px-4", config.chip, selected && "")}
+                    onClick={() => setSelectedDepartment(department)}
+                  >
+                    <span className={cn("mr-2 size-2 rounded-full", config.dot)} />
+                    {config.label}
+                  </Button>
+                )
+              })}
+            </div>
+
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-full text-muted-foreground hover:bg-slate-100 hover:text-foreground"
+                onClick={() => {
+                  setSelectedDepartment("All Departments")
+                  setSearchTerm("")
+                }}
+              >
+                <SearchX className="mr-2 size-4" />
+                Clear filters
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid gap-4 xl:grid-cols-4">
@@ -119,10 +184,10 @@ export function ProcurementDashboardPage() {
             const columnRequests = filteredRequests.filter((request) => request.stage === column)
 
             return (
-              <div key={column} className="space-y-3">
-                <div className="flex items-end justify-between gap-3 px-1">
+              <div key={column} className="space-y-3 rounded-[24px] border border-border/70 bg-slate-50/70 p-3 shadow-sm">
+                <div className="flex items-start justify-between gap-3 rounded-2xl bg-background/80 px-2 py-2">
                   <div>
-                    <p className="text-base font-medium text-foreground">{column}</p>
+                    <p className="text-base font-semibold text-foreground">{column}</p>
                     <p className="text-sm text-muted-foreground">
                       {column === "Ready for Canvass" && "Approved by department"}
                       {column === "Canvassing" && "Gathering supplier quotes"}
@@ -136,18 +201,27 @@ export function ProcurementDashboardPage() {
                 </div>
 
                 <div className="space-y-3">
+                  {columnRequests.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border/70 bg-background/60 p-4 text-center text-sm text-muted-foreground">
+                      No requests in this stage.
+                    </div>
+                  ) : null}
+
                   {columnRequests.map((request) => {
                     const department = departmentConfig[request.department]
 
                     return (
-                      <Card key={request.id} className="rounded-2xl border-border/70 bg-white shadow-sm transition-shadow hover:shadow-md">
+                      <Card
+                        key={request.id}
+                        className="rounded-[20px] border-border/70 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 "
+                      >
                         <CardContent className="space-y-3 p-4">
                           <div className="flex items-start justify-between gap-3">
                             <Badge
                               variant="outline"
-                              className={`rounded-full border px-2.5 py-1 text-xs font-medium ${department.chip}`}
+                              className={cn("rounded-full border px-2.5 py-1 text-xs font-medium", department.chip)}
                             >
-                              <span className={`mr-2 size-2 rounded-full ${department.dot}`} />
+                              <span className={cn("mr-2 size-2 rounded-full", department.dot)} />
                               {department.label}
                             </Badge>
                             <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -156,12 +230,12 @@ export function ProcurementDashboardPage() {
                           </div>
 
                           <div className="space-y-1">
-                            <p className="text-base font-medium leading-6 text-foreground">{request.title}</p>
+                            <p className="text-base font-semibold leading-6 text-foreground">{request.title}</p>
                             <p className="text-sm text-muted-foreground">{request.department}</p>
                           </div>
 
                           <div className="flex items-center justify-between gap-3 text-sm text-foreground">
-                            <span>{request.amount}</span>
+                            <span className="font-medium">{request.amount}</span>
                             <span className="inline-flex items-center gap-1 text-muted-foreground">
                               <Clock3 className="size-3.5" />
                               {request.age}
@@ -172,8 +246,11 @@ export function ProcurementDashboardPage() {
                             <Badge variant={stageVariant(request.status)} className="rounded-full px-2.5 py-1 text-xs">
                               {request.status}
                             </Badge>
-                            <Button asChild variant="ghost" size="sm" className="px-2 text-muted-foreground">
-                              <Link to={`/requests/${request.id}`}>Open</Link>
+                            <Button asChild variant="ghost" size="sm" className="rounded-full px-2.5 text-muted-foreground hover:bg-slate-100 hover:text-foreground">
+                              <Link to={`/requests/${request.id}`} className="inline-flex items-center gap-1">
+                                Open
+                                <ArrowRight className="size-3.5" />
+                              </Link>
                             </Button>
                           </div>
                         </CardContent>

@@ -480,33 +480,47 @@ export function SummaryStat({ label, value, hint }: { label: string; value: stri
 
 export function WorkflowProgressTracker({ stage }: { stage: WorkflowStage }) {
   const activeIndex = workflowIndex(stage)
+  const currentStage = workflowStages[Math.max(activeIndex, 0)]?.label ?? workflowStages[0].label
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-      <div className="relative flex items-start justify-between gap-2 overflow-x-auto pb-1">
-        <div className="absolute left-4 right-4 top-4 h-px bg-border/80" aria-hidden="true" />
-        {workflowStages.map((item, index) => {
-          const isDone = index < activeIndex
-          const isActive = index === activeIndex
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/25 p-4 shadow-sm">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      
+        
+      </div>
 
-          return (
-            <div key={item.key} className="relative z-10 flex min-w-[96px] flex-1 flex-col items-center text-center">
-              <span
-                className={cn(
-                  "mb-2 flex size-8 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
-                  isDone
-                    ? "border-emerald-300 bg-emerald-100 text-emerald-700"
-                    : isActive
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-muted-foreground"
-                )}
-              >
-                {index + 1}
-              </span>
-              <span className={cn("text-sm font-medium", isActive ? "text-foreground" : "text-muted-foreground")}>{item.label}</span>
-            </div>
-          )
-        })}
+      <div className="relative">
+        <div className="absolute left-6 right-6 top-4 h-[2px] rounded-full bg-gradient-to-r from-emerald-200 via-border/80 to-border/60" aria-hidden="true" />
+        <div className="relative flex items-start justify-between gap-2 overflow-x-auto pb-1">
+          {workflowStages.map((item, index) => {
+            const isDone = index < activeIndex
+            const isActive = index === activeIndex
+            const isUpcoming = !isDone && !isActive
+
+            return (
+              <div key={item.key} className="relative z-10 flex min-w-[96px] flex-1 flex-col items-center text-center">
+                <div
+                  className={cn(
+                    "relative mb-2 flex size-10 items-center justify-center rounded-full border shadow-sm transition-all duration-200",
+                    isDone
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                      : isActive
+                        ? "border-primary bg-primary text-primary-foreground shadow-md"
+                        : "border-border bg-background text-muted-foreground"
+                  )}
+                >
+                  {isDone ? <CheckCircle2 className="size-4" /> : <span className="text-[11px] font-semibold">{index + 1}</span>}
+                  {isActive ? <span className="absolute inset-0 rounded-full ring-4 ring-primary/20" /> : null}
+                </div>
+                <div className="space-y-0.5">
+                  <p className={cn("text-sm font-semibold", isActive ? "text-foreground" : isDone ? "text-emerald-700" : "text-muted-foreground")}>{item.label}</p>
+                  <p className={cn("text-[11px] leading-4", isActive ? "text-primary/80" : isDone ? "text-emerald-600" : "text-muted-foreground/80")}>{item.helper}</p>
+                </div>
+                {isUpcoming ? <span className="mt-2 h-1.5 w-10 rounded-full bg-border/70" /> : null}
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
