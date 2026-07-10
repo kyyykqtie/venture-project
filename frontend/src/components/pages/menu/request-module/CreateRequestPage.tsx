@@ -24,7 +24,7 @@ import {
 } from "./workflow"
 
 const departmentOptions = ["Operations", "Finance", "HR", "SalesMarketing"] as const
-const shippingTermOptions = ["Net 15", "Net 30", "COD", "Prepaid"] as const
+const shippingTermOptions = ["FOB", "CIF", "DDP"] as const
 const shippingMethodOptions = ["Supplier Delivery", "Courier", "Pickup"] as const
 
 function createBlankLineItem(): RequestPdfLineItem {
@@ -47,17 +47,20 @@ function createInitialDraft(): RequestFormData {
     requestDate: today.toISOString().slice(0, 10),
     dateNeeded: "",
     submittedBy: "",
-    submittedDate: today.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
-    approver: "",
-    approvedDate: "",
-    receiverName: "",
-    receivedDate: "",
+    submittedDate: today.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
+
     shippingTerms: "Net 30",
     shippingMethod: "Supplier Delivery",
     deliveryDate: "",
+
     remarks: "",
     address: "",
     phone: "",
+
     lineItems: [createBlankLineItem()],
   }
 }
@@ -78,6 +81,7 @@ function formatCurrency(value: number) {
 export function CreateRequestPage() {
   const navigate = useNavigate()
   const [draft, setDraft] = useState<RequestFormData>(() => createInitialDraft())
+  const today = new Date().toISOString().split("T")[0]
 
   const subtotal = draft.lineItems.reduce((total, item) => total + parseCurrency(item.estimatedCost), 0)
 
@@ -123,8 +127,22 @@ export function CreateRequestPage() {
   }
 
   const handleSubmitDraft = () => {
-    // BACKEND TODO: replace local draft storage with the request creation endpoint and request number generator.
+    if (
+      draft.deliveryDate &&
+      draft.deliveryDate < today
+    ) {
+      alert("Delivery Date cannot be earlier than today.")
+      return
+    }
+
+    // TODO:
+    // Backend should:
+    // - Generate UUID
+    // - Generate PR-2026-000001
+    // - Validate delivery date again
+
     saveRequestDraft(draft)
+
     navigate(`/requests/${draft.id}`)
   }
 
@@ -152,6 +170,9 @@ export function CreateRequestPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="request-number">Request Number</Label>
+              {/* {/* // TODO (Backend):
+              // Replace with the server-generated display request number */}
+
               <Input id="request-number" value={draft.id} readOnly />
             </div>
             <div className="space-y-2">
@@ -181,7 +202,7 @@ export function CreateRequestPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <Select value={draft.department} onValueChange={(value) => updateField("department", value as RequestFormData["department"]) }>
+              <Select value={draft.department} onValueChange={(value) => updateField("department", value as RequestFormData["department"])}>
                 <SelectTrigger id="department">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
@@ -214,49 +235,42 @@ export function CreateRequestPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+
+
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+
             <div className="space-y-2">
               <Label htmlFor="submitted-by">Requested By</Label>
               <Input
                 id="submitted-by"
                 type="text"
                 value={draft.submittedBy}
-                onChange={(event) => updateField("submittedBy", event.target.value)}
+                onChange={(event) =>
+                  updateField("submittedBy", event.target.value)
+                }
                 placeholder="Juan Dela Cruz"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="approver">Request Approved By</Label>
-              <Input
-                id="approver"
-                type="text"
-                value={draft.approver}
-                onChange={(event) => updateField("approver", event.target.value)}
-                placeholder="Maria Santos"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="receiver-name">Request Received By</Label>
-              <Input
-                id="receiver-name"
-                type="text"
-                value={draft.receiverName}
-                onChange={(event) => updateField("receiverName", event.target.value)}
-                placeholder="Receiver name"
-              />
-            </div>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                type="text"
-                value={draft.phone}
-                onChange={(event) => updateField("phone", event.target.value)}
-                placeholder="02-8523-6925"
-              />
+              <Label htmlFor="phone">Phone Number</Label>
+
+              <div className="flex">
+                <div className="flex w-20 items-center justify-center rounded-l-md border border-r-0 bg-muted text-sm font-medium">
+                  +63
+                </div>
+
+                <Input
+                  id="phone"
+                  type="tel"
+                  className="rounded-l-none"
+                  value={draft.phone}
+                  onChange={(event) => updateField("phone", event.target.value)}
+                  placeholder="9123456789"
+                  maxLength={10}
+                />
+              </div>
             </div>
             <div className="space-y-2 xl:col-span-2">
               <Label htmlFor="address">Address</Label>
@@ -273,7 +287,7 @@ export function CreateRequestPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="shipping-terms">Shipping Terms</Label>
-              <Select value={draft.shippingTerms} onValueChange={(value) => updateField("shippingTerms", value as RequestFormData["shippingTerms"]) }>
+              <Select value={draft.shippingTerms} onValueChange={(value) => updateField("shippingTerms", value as RequestFormData["shippingTerms"])}>
                 <SelectTrigger id="shipping-terms">
                   <SelectValue placeholder="Select shipping terms" />
                 </SelectTrigger>
@@ -288,7 +302,7 @@ export function CreateRequestPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="shipping-method">Shipping Method</Label>
-              <Select value={draft.shippingMethod} onValueChange={(value) => updateField("shippingMethod", value as RequestFormData["shippingMethod"]) }>
+              <Select value={draft.shippingMethod} onValueChange={(value) => updateField("shippingMethod", value as RequestFormData["shippingMethod"])}>
                 <SelectTrigger id="shipping-method">
                   <SelectValue placeholder="Select shipping method" />
                 </SelectTrigger>
@@ -301,16 +315,22 @@ export function CreateRequestPage() {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="delivery-date">Delivery Date</Label>
               <Input
+
                 id="delivery-date"
                 type="date"
+                min={today}
                 value={draft.deliveryDate}
-                onChange={(event) => updateField("deliveryDate", event.target.value)}
+                onChange={(event) =>
+                  updateField("deliveryDate", event.target.value)
+                }
               />
             </div>
           </div>
+
 
           <Separator />
 

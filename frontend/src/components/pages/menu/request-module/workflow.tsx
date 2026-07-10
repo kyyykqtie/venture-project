@@ -58,6 +58,17 @@ export type RequestPdfLineItem = {
   specification?: string
 }
 
+
+export type ApprovalInfo = {
+  approver: string
+  approvedDate: string
+  receiverName: string
+  receivedDate: string
+}
+
+
+export type RequestDetail = RequestPdfSource & Partial<ApprovalInfo>
+
 export type RequestPdfSource = {
   id: string
   title: string
@@ -67,10 +78,7 @@ export type RequestPdfSource = {
   dateNeeded: string
   submittedBy: string
   submittedDate: string
-  approver: string
-  approvedDate?: string
-  receiverName?: string
-  receivedDate?: string
+
   shippingTerms: string
   shippingMethod: string
   deliveryDate: string
@@ -80,9 +88,9 @@ export type RequestPdfSource = {
   lineItems: RequestPdfLineItem[]
 }
 
-export type RequestFormData = RequestPdfSource 
+export type RequestFormData = RequestPdfSource
 
-export type RequestRecord = RequestPdfSource & {
+export type RequestRecord = RequestPdfSource & Partial<ApprovalInfo> & {
   site: string
   requester: string
   dueDate: string
@@ -425,7 +433,7 @@ export function mapDraftToRequestRecord(draft: RequestFormData): RequestRecord {
       poNumber: draft.id,
       vendor: "Pending",
       preparedBy: "Pending",
-      approvedBy: draft.approver || "Pending",
+      approvedBy: "Pending",
       deliveryDate: draft.deliveryDate || "Pending",
       terms: draft.shippingTerms,
       status: "Draft",
@@ -504,7 +512,7 @@ export function WorkflowProgressTracker({ stage }: { stage: WorkflowStage }) {
   )
 }
 
-export function RequestPdfPreview({ request }: { request: RequestPdfSource }) {
+export function RequestPdfPreview({ request }: { request: RequestDetail }) {
   const subtotal = request.lineItems.reduce((total, item) => total + parseCurrencyValue(item.estimatedCost), 0)
 
   return (
@@ -787,7 +795,7 @@ export function RequestDetailWorkspace({ request }: { request: RequestRecord }) 
           <CardContent className="space-y-4 p-4">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <SummaryStat label="Requested By" value={request.submittedBy} hint={request.submittedDate} />
-              <SummaryStat label="Approved By" value={request.approver} hint={request.approvedDate || "Pending approval"} />
+              <SummaryStat label="Approved By" value={request.approver ?? "Pending"} hint={request.approvedDate || "Pending approval"} />
               <SummaryStat label="Received By" value={request.receiverName || "Pending"} hint={request.receivedDate || "Not yet received"} />
               <SummaryStat label="Delivery Date" value={request.deliveryDate} hint={request.shippingMethod} />
             </div>
