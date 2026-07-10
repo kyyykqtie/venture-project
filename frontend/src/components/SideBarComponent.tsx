@@ -32,6 +32,7 @@ import {
   Home,
   Inbox,
   FilePlus2,
+  ClipboardList,
   Shield,
   Settings,
   Users,
@@ -66,6 +67,14 @@ const requestManagement = [
   },
 ]
 
+const procurementManagement = [
+  {
+    title: "Requests",
+    url: "/procurement/requests",
+    icon: ClipboardList,
+  },
+]
+
 const administration = [
   {
     title: "User Provisioning",
@@ -84,9 +93,48 @@ const routeTitles: Record<string, string> = {
   "/allrequest": "All Requests",
   "/myrequest": "My Requests",
   "/create-request": "Create Request",
+  "/procurement/requests": "Procurement Requests",
+  "/requests/all": "All Requests",
+  "/requests/my": "My Requests",
+  "/requests/new": "Create Request",
   "/user-provisioning": "User Provisioning",
   "/roles-permissions": "Roles & Permissions",
   "/settings": "Settings",
+}
+
+function getPageTitle(pathname: string) {
+  const exactTitle = routeTitles[pathname]
+  if (exactTitle) {
+    return exactTitle
+  }
+
+  if (pathname.startsWith("/requests/")) {
+    const parts = pathname.split("/").filter(Boolean)
+
+    if (parts.length >= 3 && parts[2] === "approval") {
+      return "Approval Review"
+    }
+
+    if (parts.length >= 3 && parts[2] === "purchase-order") {
+      return "Purchase Order"
+    }
+
+    if (parts.length >= 3 && parts[2] === "canvass") {
+      return parts[3] === "review" ? "Canvass Review" : "Canvass Sheet"
+    }
+
+    if (parts.length >= 3 && parts[2] === "receiving") {
+      return "Receiving"
+    }
+
+    if (parts.length >= 3 && parts[2] === "completed") {
+      return "Completed"
+    }
+
+    return "Request Detail"
+  }
+
+  return "Dashboard"
 }
 
 function getInitials(name?: string | null) {
@@ -106,7 +154,7 @@ export function SidebarDemo() {
   const { data: session, isPending: isSessionLoading } = authClient.useSession()
   const location = useLocation()
 
-  const pageTitle = routeTitles[location.pathname] ?? "Dashboard"
+  const pageTitle = getPageTitle(location.pathname)
   const user = session?.user
   const userName = user?.name ?? (isSessionLoading ? "Loading..." : "Guest")
   const userEmail = user?.email ?? (isSessionLoading ? "Fetching session..." : "No account found")
@@ -117,8 +165,8 @@ export function SidebarDemo() {
       <div className="flex min-h-svh w-full bg-background text-foreground">
         <Sidebar>
           <SidebarHeader className="px-4 py-4">
-            <div className="text-sm font-semibold tracking-wide text-foreground">
-              Logo nato here
+            <div className="text-xl font-semibold tracking-wide text-foreground">
+              9K CRM System
             </div>
           </SidebarHeader>
           <SidebarContent>
@@ -145,6 +193,24 @@ export function SidebarDemo() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {requestManagement.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild tooltip={item.title}>
+                        <NavLink to={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>PROCUREMENT REQUESTS</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {procurementManagement.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild tooltip={item.title}>
                         <NavLink to={item.url}>
@@ -254,7 +320,7 @@ export function SidebarDemo() {
             </div>
           </div>
 
-          <div className="flex flex-1 items-center justify-center overflow-auto p-6">
+          <div className="flex flex-1 items-start justify-start overflow-auto p-4 lg:p-6">
             <Outlet />
           </div>
         </main>
