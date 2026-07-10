@@ -64,7 +64,7 @@ export function ProtectedRoute() {
   }
 
   // Logged in but not a superadmin
-  if (session.user.role !== "superadmin") {
+  if (session.user.role !== "admin") {
     return <UnauthorizedScreen />;
   }
 

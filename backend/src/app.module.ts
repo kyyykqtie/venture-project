@@ -8,11 +8,13 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { admin } from 'better-auth/plugins';
 import { DATABASE_CONNECTION } from './database/database.connection';
 import { UserModule } from './user/user.module';
+import { DepartmentModule } from './department/department.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     UserModule,
+    DepartmentModule,
     ConfigModule.forRoot(),
     AuthModule.forRootAsync({
       imports: [DatabaseModule, ConfigModule],

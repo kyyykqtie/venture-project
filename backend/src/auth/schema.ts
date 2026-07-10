@@ -1,6 +1,17 @@
 import { relations } from 'drizzle-orm';
 import { pgTable, text, timestamp, boolean, index } from 'drizzle-orm/pg-core';
 
+export const department = pgTable('department', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -11,6 +22,9 @@ export const user = pgTable('user', {
   banned: boolean('banned').default(false),
   banReason: text('ban_reason'),
   banExpires: timestamp('ban_expires'),
+  departmentId: text('department_id').references(() => department.id, {
+    onDelete: 'set null',
+  }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
@@ -77,9 +91,17 @@ export const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
-export const userRelations = relations(user, ({ many }) => ({
+export const departmentRelations = relations(department, ({ many }) => ({
+  users: many(user),
+}));
+
+export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
+  department: one(department, {
+    fields: [user.departmentId],
+    references: [department.id],
+  }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

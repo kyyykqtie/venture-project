@@ -37,9 +37,13 @@ import {
   Settings,
   Users,
   LogOut,
+  Building2,
 } from "lucide-react"
 
 import { NavLink, Outlet, useLocation } from "react-router-dom"
+import { useEffect, useState } from "react"
+
+const API_BASE = "http://localhost:3000"
 
 const mainNavigation = [
   {
@@ -153,6 +157,15 @@ function getInitials(name?: string | null) {
 export function SidebarDemo() {
   const { data: session, isPending: isSessionLoading } = authClient.useSession()
   const location = useLocation()
+  const [departmentName, setDepartmentName] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    fetch(`${API_BASE}/users/me`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => setDepartmentName(data?.departmentName ?? null))
+      .catch(() => null)
+  }, [session?.user?.id])
 
   const pageTitle = getPageTitle(location.pathname)
   const user = session?.user
@@ -257,9 +270,16 @@ export function SidebarDemo() {
                         <span className="truncate text-sm font-medium">
                           {userName}
                         </span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {userEmail}
-                        </span>
+                        {departmentName ? (
+                          <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                            <Building2 className="size-3 shrink-0" />
+                            {departmentName}
+                          </span>
+                        ) : (
+                          <span className="truncate text-xs text-muted-foreground">
+                            {userEmail}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
@@ -279,6 +299,12 @@ export function SidebarDemo() {
                         <span className="truncate text-xs text-muted-foreground">
                           {userEmail}
                         </span>
+                        {departmentName && (
+                          <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                            <Building2 className="size-3 shrink-0" />
+                            {departmentName}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </DropdownMenuLabel>

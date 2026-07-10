@@ -1,5 +1,5 @@
 /**
- * Seed script — creates the superadmin user if it doesn't already exist.
+ * Seed script — creates the superadmin user and default departments if they don't exist.
  * Run with: npx ts-node -r tsconfig-paths/register src/seed.ts
  */
 import 'dotenv/config';
@@ -10,6 +10,16 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { admin } from 'better-auth/plugins';
 import * as authSchema from './auth/schema';
 import { eq } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
+
+const DEFAULT_DEPARTMENTS = [
+  { name: 'Engineering',  description: 'Software and infrastructure engineering' },
+  { name: 'Sales',        description: 'Sales and business development' },
+  { name: 'Marketing',    description: 'Marketing and brand management' },
+  { name: 'HR',           description: 'Human resources and recruitment' },
+  { name: 'Finance',      description: 'Finance and accounting' },
+  { name: 'Support',      description: 'Customer and technical support' },
+];
 
 async function seed() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
@@ -22,11 +32,35 @@ async function seed() {
     trustedOrigins: ['http://localhost:5173'],
   });
 
+  // ── Seed departments ────────────────────────────────────────────────────────
+  console.log('\n📦 Seeding departments...');
+  for (const dept of DEFAULT_DEPARTMENTS) {
+    const existing = await db
+      .select()
+      .from(authSchema.department)
+      .where(eq(authSchema.department.name, dept.name))
+      .limit(1);
+
+    if (existing.length > 0) {
+      console.log(`   ⏭  ${dept.name} already exists — skipping.`);
+      continue;
+    }
+
+    await db.insert(authSchema.department).values({
+      id: randomUUID(),
+      name: dept.name,
+      description: dept.description,
+    });
+    console.log(`   ✅ Created department: ${dept.name}`);
+  }
+
+  // ── Seed superadmin ─────────────────────────────────────────────────────────
   const SUPERADMIN_EMAIL = 'admin@superadmin.ai';
   const SUPERADMIN_PASSWORD = 'superadmin';
   const SUPERADMIN_NAME = 'Super Admin';
 
-  // Check if user already exists
+  console.log('\n👤 Seeding superadmin...');
+
   const existing = await db
     .select()
     .from(authSchema.user)
@@ -34,20 +68,16 @@ async function seed() {
     .limit(1);
 
   if (existing.length > 0) {
-    console.log('✅ Superadmin already exists — skipping creation.');
-
-    // Ensure role is set to superadmin in case it was created without the role
+    console.log('   ⏭  Superadmin already exists — skipping creation.');
     await db
       .update(authSchema.user)
-      .set({ role: 'superadmin' })
+      .set({ role: 'admin' })
       .where(eq(authSchema.user.email, SUPERADMIN_EMAIL));
-
-    console.log('✅ Role confirmed as superadmin.');
+    console.log('   ✅ Role confirmed as admin.');
     await pool.end();
     return;
   }
 
-  // Create the superadmin account via better-auth so password is hashed correctly
   const result = await authInstance.api.signUpEmail({
     body: {
       email: SUPERADMIN_EMAIL,
@@ -57,21 +87,20 @@ async function seed() {
   });
 
   if (!result || !result.user) {
-    console.error('❌ Failed to create superadmin user.');
+    console.error('   ❌ Failed to create superadmin user.');
     await pool.end();
     process.exit(1);
   }
 
-  // Set the role to superadmin
   await db
     .update(authSchema.user)
-    .set({ role: 'superadmin' })
+    .set({ role: 'admin' })
     .where(eq(authSchema.user.email, SUPERADMIN_EMAIL));
 
-  console.log('✅ Superadmin created successfully.');
-  console.log(`   Email   : ${SUPERADMIN_EMAIL}`);
-  console.log(`   Password: ${SUPERADMIN_PASSWORD}`);
-  console.log(`   Role    : superadmin`);
+  console.log('   ✅ Superadmin created successfully.');
+  console.log(`      Email   : ${SUPERADMIN_EMAIL}`);
+  console.log(`      Password: ${SUPERADMIN_PASSWORD}`);
+  console.log(`      Role    : admin`);
 
   await pool.end();
 }
