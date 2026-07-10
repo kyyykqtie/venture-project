@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -81,7 +81,8 @@ function formatCurrency(value: number) {
 export function CreateRequestPage() {
   const navigate = useNavigate()
   const [draft, setDraft] = useState<RequestFormData>(() => createInitialDraft())
-  const today = new Date().toISOString().split("T")[0]
+  const today = useMemo(() => new Date().toISOString().split("T")[0], [])
+  const [deliveryDateError, setDeliveryDateError] = useState("")
 
   const subtotal = draft.lineItems.reduce((total, item) => total + parseCurrency(item.estimatedCost), 0)
 
@@ -126,20 +127,38 @@ export function CreateRequestPage() {
     }))
   }
 
-  const handleSubmitDraft = () => {
-    if (
-      draft.deliveryDate &&
-      draft.deliveryDate < today
-    ) {
-      alert("Delivery Date cannot be earlier than today.")
+  const handleDeliveryDateChange = (value: string) => {
+    updateField("deliveryDate", value)
+
+    if (!value) {
+      setDeliveryDateError("")
       return
     }
 
-    // TODO:
-    // Backend should:
-    // - Generate UUID
-    // - Generate PR-2026-000001
-    // - Validate delivery date again
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/
+    if (!datePattern.test(value)) {
+      setDeliveryDateError("Delivery date must use YYYY-MM-DD format.")
+      return
+    }
+
+    if (value < today) {
+      setDeliveryDateError("Delivery date cannot be earlier than today.")
+      return
+    }
+
+    setDeliveryDateError("")
+  }
+
+  const handleSubmitDraft = () => {
+    if (deliveryDateError) {
+      return
+    }
+
+    // BACKEND TODO:
+    // - Generate a UUID for the internal request record and persist the request.
+    // - Generate the display request number (for example PR-2026-000147) on the server.
+    // - Re-validate the delivery date on the server using YYYY-MM-DD and the business rule that it cannot be earlier than today.
+    // - Enforce field ownership per role on every update request so requestors, approvers, and procurement can only edit their allowed fields.
 
     saveRequestDraft(draft)
 
@@ -170,10 +189,12 @@ export function CreateRequestPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="request-number">Request Number</Label>
-              {/* {/* // TODO (Backend):
-              // Replace with the server-generated display request number */}
-
-              <Input id="request-number" value={draft.id} readOnly />
+              <Input
+                id="request-number"
+                value={draft.id}
+                readOnly
+                placeholder="Assigned by the backend after submission"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="request-title">Request Title</Label>
@@ -317,17 +338,17 @@ export function CreateRequestPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="delivery-date">Delivery Date</Label>
+              <Label htmlFor="delivery-date">Delivery</Label>
               <Input
-
                 id="delivery-date"
                 type="date"
                 min={today}
                 value={draft.deliveryDate}
-                onChange={(event) =>
-                  updateField("deliveryDate", event.target.value)
-                }
+                onChange={(event) => handleDeliveryDateChange(event.target.value)}
               />
+              {deliveryDateError ? (
+                <p className="text-sm text-destructive">{deliveryDateError}</p>
+              ) : null}
             </div>
           </div>
 
