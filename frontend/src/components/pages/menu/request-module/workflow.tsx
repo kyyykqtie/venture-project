@@ -483,11 +483,8 @@ export function WorkflowProgressTracker({ stage }: { stage: WorkflowStage }) {
   const currentStage = workflowStages[Math.max(activeIndex, 0)]?.label ?? workflowStages[0].label
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/25 p-4 shadow-sm">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      
-        
-      </div>
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/25 p-5 shadow-sm">
+     
 
       <div className="relative">
         <div className="absolute left-6 right-6 top-4 h-[2px] rounded-full bg-gradient-to-r from-emerald-200 via-border/80 to-border/60" aria-hidden="true" />
