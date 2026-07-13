@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { pgTable, text, timestamp, boolean, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, index, primaryKey } from 'drizzle-orm/pg-core';
 
 export const department = pgTable('department', {
   id: text('id').primaryKey(),
@@ -102,6 +102,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
     fields: [user.departmentId],
     references: [department.id],
   }),
+  userRoles: many(userRole),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -117,3 +118,66 @@ export const accountRelations = relations(account, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// ── Roles & Permissions tables ───────────────────────────────────────────────
+
+export const role = pgTable('role', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  isSystem: boolean('is_system').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const permission = pgTable('permission', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const rolePermission = pgTable(
+  'role_permission',
+  {
+    roleId: text('role_id').notNull().references(() => role.id, { onDelete: 'cascade' }),
+    permissionId: text('permission_id').notNull().references(() => permission.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.roleId, t.permissionId] })],
+);
+
+export const userRole = pgTable(
+  'user_role',
+  {
+    userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+    roleId: text('role_id').notNull().references(() => role.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.roleId] }), index('user_role_userId_idx').on(t.userId)],
+);
+
+export const roleRelations = relations(role, ({ many }) => ({
+  rolePermissions: many(rolePermission),
+  userRoles: many(userRole),
+}));
+
+export const permissionRelations = relations(permission, ({ many }) => ({
+  rolePermissions: many(rolePermission),
+}));
+
+export const rolePermissionRelations = relations(rolePermission, ({ one }) => ({
+  role: one(role, { fields: [rolePermission.roleId], references: [role.id] }),
+  permission: one(permission, { fields: [rolePermission.permissionId], references: [permission.id] }),
+}));
+
+export const userRoleRelations = relations(userRole, ({ one }) => ({
+  user: one(user, { fields: [userRole.userId], references: [user.id] }),
+  role: one(role, { fields: [userRole.roleId], references: [role.id] }),
+}));
+
