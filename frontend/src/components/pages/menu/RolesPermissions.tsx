@@ -12,10 +12,10 @@ import {
 
 // Role hierarchy — order matters: admin is always at the top
 const ROLE_HIERARCHY = [
-  { value: "admin",    label: "Admin",    badge: "bg-red-100 text-red-700" },
-  { value: "manager",  label: "Manager",  badge: "bg-blue-100 text-blue-700" },
-  { value: "Approver", label: "Approver", badge: "bg-purple-100 text-purple-700" },
-  { value: "user",     label: "User",     badge: "bg-gray-100 text-gray-600" },
+  { value: "Administrator",    label: "Superadmin",    badge: "bg-red-100 text-red-700" },
+  { value: "Manager",  label: "Procurement Manager",  badge: "bg-blue-100 text-blue-700" },
+  { value: "Approver", label: "Requisition Approver", badge: "bg-purple-100 text-purple-700" },
+  { value: "user",     label: "Requestor",     badge: "bg-gray-100 text-gray-600" },
 ] as const
 
 interface User {
@@ -24,6 +24,7 @@ interface User {
   email: string
   image?: string | null
   role?: string | null
+  department?: string | null
 }
 
 function getRoleMeta(role?: string | null) {
@@ -41,6 +42,9 @@ function getInitials(name: string) {
     .toUpperCase()
     .slice(0, 2)
 }
+
+
+
 
 // Sort users by role hierarchy index, then alphabetically by name
 function sortUsers(users: User[]): User[] {
@@ -106,6 +110,8 @@ export default function RolesPermissionsPage() {
   }
 
   const grouped = groupByRole(users)
+
+
 
   return (
     <div className="flex w-full h-full flex-col gap-5 rounded-xl border border-gray-200 bg-white p-6">
@@ -219,6 +225,7 @@ function UserRow({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium text-gray-900">{user.name}</span>
+        <span className="truncate text-xs text-gray-500">{user.department ?? "No Department"}</span>
         <span className="truncate text-xs text-gray-500">{user.email}</span>
       </div>
 

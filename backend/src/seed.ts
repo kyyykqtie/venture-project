@@ -13,12 +13,22 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 const DEFAULT_DEPARTMENTS = [
-  { name: 'Engineering',  description: 'Software and infrastructure engineering' },
-  { name: 'Sales',        description: 'Sales and business development' },
-  { name: 'Marketing',    description: 'Marketing and brand management' },
-  { name: 'HR',           description: 'Human resources and recruitment' },
-  { name: 'Finance',      description: 'Finance and accounting' },
-  { name: 'Support',      description: 'Customer and technical support' },
+  { 
+    name: 'Operations',  
+    description: 'Handles daily business operations, processes, and organizational efficiency' 
+  },
+  { 
+    name: 'Sales & Marketing',        
+    description: 'Manages sales activities, marketing strategies, and customer relationships' 
+  },
+  { 
+    name: 'HR',           
+    description: 'Manages employee relations, recruitment, and workforce development' 
+  },
+  { 
+    name: 'Finance',      
+    description: 'Handles budgeting, accounting, financial planning, and reporting' 
+  },
 ];
 
 async function seed() {

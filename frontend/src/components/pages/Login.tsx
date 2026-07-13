@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dashboard } from "./menu/Dashboard"
 
+
 function App() {
   const { data: session, isPending: isLoading } = authClient.useSession()
   const [email, setEmail] = useState("")
