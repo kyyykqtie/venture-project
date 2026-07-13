@@ -15,7 +15,8 @@ import {
 } from "@/components/pages/menu/request-module/RequestModulePages"
 
 import UserProvisioningPage from "@/components/pages/menu/UserProvisioning"
-import RolesPermissionsPage from "@/components/pages/menu/RolesPermissions"
+import RolesPermissionsPage from "@/components/pages/menu/UserManagement/RolesPermissions"
+import UserDirectoryPage from "@/components/pages/menu/UserManagement/UserDirectory"
 import SettingsPage from "@/components/pages/Settings"
 import LoginPage from "@/components/pages/Login"
 
@@ -63,6 +64,7 @@ export function AppRoutes() {
         {/* User provisioning — requires manage_users */}
         <Route element={<ProtectedRoute requiredPermission="manage_users" />}>
           <Route path="/user-provisioning" element={<UserProvisioningPage />} />
+          <Route path="/user-directory" element={<UserDirectoryPage />} />
         </Route>
 
         {/* Roles & permissions — requires manage_roles_permissions */}

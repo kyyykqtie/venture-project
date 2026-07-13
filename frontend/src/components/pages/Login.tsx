@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import jacolbsLogo from "@/assets/JACOLBSV2.png"
 import { Dashboard } from "./menu/Dashboard"
 
 
@@ -61,10 +62,14 @@ function App() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-border pb-6">
+        <div className="flex flex-col items-center gap-4 border-b border-border pb-6 text-center">
+          <img
+            src={jacolbsLogo}
+            alt="JACOLBS logo"
+            className="h-14 w-auto max-w-[220px] rounded-lg object-contain"
+          />
           <div>
-        
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
               Welcome Back!
             </h1>
             <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">

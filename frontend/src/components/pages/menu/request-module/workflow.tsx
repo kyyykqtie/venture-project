@@ -480,6 +480,7 @@ export function SummaryStat({ label, value, hint }: { label: string; value: stri
 
 export function WorkflowProgressTracker({ stage }: { stage: WorkflowStage }) {
   const activeIndex = workflowIndex(stage)
+ 
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/25 p-5 shadow-sm">

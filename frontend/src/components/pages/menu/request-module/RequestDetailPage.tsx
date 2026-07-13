@@ -37,7 +37,7 @@ export function RequestDetailPage() {
                 Live PDF Preview
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-5xl">
+            <DialogContent className="w-[95vw] sm:max-w-3xl">
               <DialogHeader>
                 <DialogTitle>Live PDF Preview</DialogTitle>
                 <DialogDescription>

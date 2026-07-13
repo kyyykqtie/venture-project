@@ -9,6 +9,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/layout/sidebar"
@@ -26,9 +29,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { authClient } from "@/lib/auth-client"
+import jacolbsLogo from "@/assets/JACOLBSV2.png"
 import {
   Calendar,
   ChevronsUpDown,
+  ChevronDown,
+  ChevronRight,
   Home,
   Inbox,
   FilePlus2,
@@ -41,7 +47,8 @@ import {
 } from "lucide-react"
 
 import { NavLink, Outlet, useLocation } from "react-router-dom"
-import { useAuth, type PermissionName } from "@/context/AuthContext"
+import {  type PermissionName } from "@/context/AuthContext"
+import { useEffect, useState } from "react"
 
 const API_BASE = "http://localhost:3000"
 
@@ -94,7 +101,11 @@ const administration: NavItem[] = [
     title: "User Provisioning",
     url: "/user-provisioning",
     icon: Users,
-    requiredPermission: "manage_users",
+  },
+  {
+    title: "User Directory",
+    url: "/user-directory",
+    icon: Users,
   },
   {
     title: "Roles & Permissions",
@@ -184,50 +195,142 @@ function NavGroup({
 export function SidebarDemo() {
   const { data: session, isPending: isSessionLoading } = authClient.useSession()
   const location = useLocation()
-  const { user, hasPermission } = useAuth()
+  const [departmentName, setDepartmentName] = useState<string | null>(null)
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false)
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    fetch(`${API_BASE}/users/me`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => setDepartmentName(data?.departmentName ?? null))
+      .catch(() => null)
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    const isChildActive = administration.some((item) => item.url === location.pathname)
+    if (isChildActive) {
+      setIsUserManagementOpen(true)
+    }
+  }, [location.pathname])
 
   const pageTitle = getPageTitle(location.pathname)
-  const authUser = session?.user
-  const userName = authUser?.name ?? (isSessionLoading ? "Loading..." : "Guest")
-  const userEmail = authUser?.email ?? (isSessionLoading ? "Fetching session..." : "No account found")
-  const userImage = authUser?.image ?? ""
-  const departmentName = user?.departmentName ?? null
-  const isAdmin = authUser?.role === "admin"
+
+  useEffect(() => {
+    document.title = `${pageTitle} `
+  }, [pageTitle])
+
+  const user = session?.user
+  const userName = user?.name ?? (isSessionLoading ? "Loading..." : "Guest")
+  const userEmail = user?.email ?? (isSessionLoading ? "Fetching session..." : "No account found")
+  const userImage = user?.image ?? ""
 
   return (
     <SidebarProvider>
       <div className="flex min-h-svh w-full bg-background text-foreground">
         <Sidebar>
           <SidebarHeader className="px-4 py-4">
-            <div className="text-xl font-semibold tracking-wide text-foreground">
-              9K CRM System
+            <div className="flex items-center justify-center">
+              <img
+                src={jacolbsLogo}
+                alt="JACOLBS logo"
+                className="h-12 w-auto max-w-[180px] rounded-md object-contain"
+              />
             </div>
           </SidebarHeader>
           <SidebarContent>
-            <NavGroup
-              label="MAIN NAVIGATION"
-              items={mainNavigation}
-              isAdmin={isAdmin}
-              hasPermission={hasPermission}
-            />
-            <NavGroup
-              label="REQUEST MANAGEMENT"
-              items={requestManagement}
-              isAdmin={isAdmin}
-              hasPermission={hasPermission}
-            />
-            <NavGroup
-              label="PROCUREMENT REQUESTS"
-              items={procurementManagement}
-              isAdmin={isAdmin}
-              hasPermission={hasPermission}
-            />
-            <NavGroup
-              label="ADMINISTRATION"
-              items={administration}
-              isAdmin={isAdmin}
-              hasPermission={hasPermission}
-            />
+            <SidebarGroup>
+              <SidebarGroupLabel>MAIN NAVIGATION</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {mainNavigation.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild tooltip={item.title}>
+                        <NavLink to={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>REQUEST MANAGEMENT</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {requestManagement.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild tooltip={item.title}>
+                        <NavLink to={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>PROCUREMENT REQUESTS</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {procurementManagement.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild tooltip={item.title}>
+                        <NavLink to={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>ADMINISTRATION</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      type="button"
+                      className="w-full justify-between"
+                      tooltip="User Management"
+                      onClick={() => setIsUserManagementOpen((open) => !open)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Users className="size-4" />
+                        <span>User Management</span>
+                      </div>
+                      {isUserManagementOpen ? (
+                        <ChevronDown className="size-4" />
+                      ) : (
+                        <ChevronRight className="size-4" />
+                      )}
+                    </SidebarMenuButton>
+                    {isUserManagementOpen && (
+                      <SidebarMenuSub>
+                        {administration.map((item) => (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton asChild size="sm" isActive={location.pathname === item.url}>
+                              <NavLink to={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </NavLink>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    )}
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter>
