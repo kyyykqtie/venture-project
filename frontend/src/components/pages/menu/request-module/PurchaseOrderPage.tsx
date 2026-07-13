@@ -3,12 +3,15 @@ import { Link, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileCheck2 } from "lucide-react"
+import { usePermissions } from "@/context/AuthContext"
 
 import { StageWorkspaceShell, SummaryStat, getRequest } from "./workflow"
 
 export function PurchaseOrderPage() {
   const { requestId } = useParams()
   const request = getRequest(requestId)
+  const { hasPermission } = usePermissions()
+  const canGeneratePO = hasPermission("generate_po")
 
   return (
     <StageWorkspaceShell
@@ -16,10 +19,12 @@ export function PurchaseOrderPage() {
       description="Generate the purchase order only after approval is complete."
       request={request}
       action={
-        <Button size="sm">
-          <FileCheck2 className="mr-2 size-4" />
-          Generate PO
-        </Button>
+        canGeneratePO ? (
+          <Button size="sm">
+            <FileCheck2 className="mr-2 size-4" />
+            Generate PO
+          </Button>
+        ) : undefined
       }
     >
       <Card>

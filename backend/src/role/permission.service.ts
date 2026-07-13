@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DATABASE_CONNECTION } from '../database/database.connection';
-import * as schema from '../auth/schema';
 import { eq } from 'drizzle-orm';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../auth/schema';
+import { DATABASE_CONNECTION } from '../database/database.connection';
 import { PERMISSIONS, PermissionName } from './permission.constants';
 
 @Injectable()
@@ -13,26 +13,30 @@ export class PermissionService {
   ) {}
 
   async resolvePermissions(userId: string): Promise<Set<PermissionName>> {
-    const rows = await this.db
+    // Explicit per-user permissions take priority
+    const explicit = await this.db
       .select({ name: schema.permission.name })
-      .from(schema.userRole)
-      .innerJoin(schema.rolePermission, eq(schema.rolePermission.roleId, schema.userRole.roleId))
-      .innerJoin(schema.permission, eq(schema.permission.id, schema.rolePermission.permissionId))
-      .where(eq(schema.userRole.userId, userId));
+      .from(schema.userPermission)
+      .innerJoin(schema.permission, eq(schema.permission.id, schema.userPermission.permissionId))
+      .where(eq(schema.userPermission.userId, userId));
 
-    const set = new Set<PermissionName>();
-    for (const r of rows) {
-      const name = r.name as PermissionName;
-      if ((PERMISSIONS as readonly string[]).includes(name)) set.add(name);
+    if (explicit.length > 0) {
+      return new Set(explicit.map((r) => r.name as PermissionName));
     }
-    return set;
+
+    // Fall back to role-based permissions
+    const roleBased = await this.db
+      .select({ name: schema.permission.name })
+      .from(schema.user)
+      .innerJoin(schema.role, eq(schema.user.role, schema.role.name))
+      .innerJoin(schema.rolePermission, eq(schema.rolePermission.roleId, schema.role.id))
+      .innerJoin(schema.permission, eq(schema.permission.id, schema.rolePermission.permissionId))
+      .where(eq(schema.user.id, userId));
+
+    return new Set(roleBased.map((r) => r.name as PermissionName));
   }
 
   async resolveAllPermissions(): Promise<PermissionName[]> {
-    const rows = await this.db
-      .select({ name: schema.permission.name })
-      .from(schema.permission);
-
-    return rows.map((row) => row.name as PermissionName);
+    return PERMISSIONS.slice();
   }
 }

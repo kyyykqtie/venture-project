@@ -1,29 +1,21 @@
-import { Body, Controller, Get, Post, HttpCode, HttpStatus } from '@nestjs/common';
-import { DepartmentService } from './department.service';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Public } from '@thallesp/nestjs-better-auth';
-
-class CreateDepartmentDto {
-  name: string;
-  description?: string;
-}
-
-class AssignDepartmentDto {
-  userId: string;
-  departmentId: string;
-}
+import { DepartmentService } from './department.service';
+import { AssignDepartmentDto } from './dto/assign-department.dto';
+import { CreateDepartmentDto } from './dto/create-department.dto';
 
 @Controller('departments')
 export class DepartmentController {
   constructor(private readonly departmentService: DepartmentService) {}
 
-  /** List all departments — used to populate the dropdown in the frontend */
+  /** List all departments — used to populate dropdowns in the frontend */
   @Get()
   @Public()
   findAll() {
     return this.departmentService.findAll();
   }
 
-  /** Create a new department (admin only in practice — guarded by ProtectedRoute on frontend) */
+  /** Create a new department (admin-only in practice — guarded by ProtectedRoute on frontend) */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateDepartmentDto) {

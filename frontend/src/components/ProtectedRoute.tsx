@@ -1,20 +1,32 @@
-// src/components/ProtectedRoute.tsx
-import { useEffect, useState } from "react";
-import { Navigate, Outlet, useNavigate } from "react-router-dom";
-import { authClient } from "@/lib/auth-client";
+/**
+ * ProtectedRoute — two modes:
+ *
+ * 1. `<ProtectedRoute adminOnly />` (default, no permission prop)
+ *    Blocks non-admin users with a countdown screen (original behaviour).
+ *
+ * 2. `<ProtectedRoute requiredPermission="manage_users" />`
+ *    Blocks users who do not have the named permission.
+ *    Shows an "Access Denied" screen instead of redirecting.
+ */
+import { useEffect, useState } from "react"
+import { Navigate, Outlet, useNavigate } from "react-router-dom"
+import { authClient } from "@/lib/auth-client"
+import { useAuth, type PermissionName } from "@/context/AuthContext"
 
-function UnauthorizedScreen() {
-  const [countdown, setCountdown] = useState(15);
-  const navigate = useNavigate();
+// ── Shared access-denied screen ──────────────────────────────────────────────
+
+function AccessDeniedScreen({ message }: { message?: string }) {
+  const [countdown, setCountdown] = useState(15)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (countdown === 0) {
-      navigate("/", { replace: true });
-      return;
+      navigate("/", { replace: true })
+      return
     }
-    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [countdown, navigate]);
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [countdown, navigate])
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-6 bg-background text-center px-4">
@@ -36,37 +48,61 @@ function UnauthorizedScreen() {
       </div>
       <h1 className="text-2xl font-bold text-foreground">Access Denied</h1>
       <p className="text-base text-muted-foreground max-w-sm">
-        SuperAdmin Session Needed for Authorization
+        {message ?? "You don't have permission to view this page."}
       </p>
       <p className="text-sm text-muted-foreground">
-        Redirecting to login in{" "}
+        Redirecting in{" "}
         <span className="font-semibold text-red-500">{countdown}</span>{" "}
-        second{countdown !== 1 ? "s" : ""}...
+        second{countdown !== 1 ? "s" : ""}…
       </p>
       <button
-        onClick={() => navigate("/", { replace: true })}
+        onClick={() => navigate("/dashboard", { replace: true })}
         className="mt-2 rounded-md bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
       >
-        Go to Login Now
+        Go to Dashboard
       </button>
     </div>
-  );
+  )
 }
 
-export function ProtectedRoute() {
-  const { data: session, isPending } = authClient.useSession();
+// ── ProtectedRoute ────────────────────────────────────────────────────────────
 
-  if (isPending) return null;
+interface ProtectedRouteProps {
+  /**
+   * When set, the route is only accessible to users who have this permission.
+   * Admins always pass regardless of this value.
+   */
+  requiredPermission?: PermissionName
+}
 
-  // No session at all — not logged in
+export function ProtectedRoute({ requiredPermission }: ProtectedRouteProps = {}) {
+  const { data: session, isPending } = authClient.useSession()
+  const { user, isLoading, hasPermission } = useAuth()
+
+  // Wait for both session and /users/me to resolve
+  if (isPending || isLoading) return null
+
+  // Not logged in at all
   if (!session) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/" replace />
   }
 
-  // Logged in but not a superadmin
-  if (session.user.role !== "admin") {
-    return <UnauthorizedScreen />;
+  const isAdmin = session.user.role === "admin"
+
+  // No specific permission required — just need to be logged in (and admin for
+  // the legacy admin-only pages).
+  if (!requiredPermission) {
+    if (!isAdmin) {
+      return (
+        <AccessDeniedScreen message="SuperAdmin Session Needed for Authorization" />
+      )
+    }
+    return <Outlet />
   }
 
-  return <Outlet />;
+  // Permission-gated route: admins always pass, others need the permission.
+  if (isAdmin) return <Outlet />
+  if (user && hasPermission(requiredPermission)) return <Outlet />
+
+  return <AccessDeniedScreen />
 }

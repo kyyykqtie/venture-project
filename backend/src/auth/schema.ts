@@ -1,5 +1,12 @@
 import { relations } from 'drizzle-orm';
-import { pgTable, text, timestamp, boolean, index, primaryKey } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  index,
+  primaryKey,
+} from 'drizzle-orm/pg-core';
 
 export const department = pgTable('department', {
   id: text('id').primaryKey(),
@@ -8,7 +15,7 @@ export const department = pgTable('department', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .$onUpdate(() => new Date())
     .notNull(),
 });
 
@@ -28,7 +35,7 @@ export const user = pgTable('user', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .$onUpdate(() => new Date())
     .notNull(),
 });
 
@@ -40,7 +47,7 @@ export const session = pgTable(
     token: text('token').notNull().unique(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
-      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .$onUpdate(() => new Date())
       .notNull(),
     ipAddress: text('ip_address'),
     userAgent: text('user_agent'),
@@ -69,7 +76,7 @@ export const account = pgTable(
     password: text('password'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
-      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .$onUpdate(() => new Date())
       .notNull(),
   },
   (table) => [index('account_userId_idx').on(table.userId)],
@@ -85,7 +92,7 @@ export const verification = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .$onUpdate(() => new Date())
       .notNull(),
   },
   (table) => [index('verification_identifier_idx').on(table.identifier)],
@@ -102,7 +109,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
     fields: [user.departmentId],
     references: [department.id],
   }),
-  userRoles: many(userRole),
+  userPermissions: many(userPermission),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -119,6 +126,10 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
+export const verificationRelations = relations(verification, () => ({
+  // no relations required
+}));
+
 // ── Roles & Permissions tables ───────────────────────────────────────────────
 
 export const role = pgTable('role', {
@@ -129,7 +140,7 @@ export const role = pgTable('role', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .$onUpdate(() => new Date())
     .notNull(),
 });
 
@@ -140,44 +151,60 @@ export const permission = pgTable('permission', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .$onUpdate(() => new Date())
     .notNull(),
 });
 
 export const rolePermission = pgTable(
   'role_permission',
   {
-    roleId: text('role_id').notNull().references(() => role.id, { onDelete: 'cascade' }),
-    permissionId: text('permission_id').notNull().references(() => permission.id, { onDelete: 'cascade' }),
+    roleId: text('role_id')
+      .notNull()
+      .references(() => role.id, { onDelete: 'cascade' }),
+    permissionId: text('permission_id')
+      .notNull()
+      .references(() => permission.id, { onDelete: 'cascade' }),
   },
   (t) => [primaryKey({ columns: [t.roleId, t.permissionId] })],
 );
 
-export const userRole = pgTable(
-  'user_role',
+export const userPermission = pgTable(
+  'user_permission',
   {
-    userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
-    roleId: text('role_id').notNull().references(() => role.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    permissionId: text('permission_id')
+      .notNull()
+      .references(() => permission.id, { onDelete: 'cascade' }),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.roleId] }), index('user_role_userId_idx').on(t.userId)],
+  (t) => [
+    primaryKey({ columns: [t.userId, t.permissionId] }),
+    index('user_permission_user_id_idx').on(t.userId),
+  ],
 );
 
 export const roleRelations = relations(role, ({ many }) => ({
   rolePermissions: many(rolePermission),
-  userRoles: many(userRole),
 }));
 
 export const permissionRelations = relations(permission, ({ many }) => ({
   rolePermissions: many(rolePermission),
+  userPermissions: many(userPermission),
 }));
 
 export const rolePermissionRelations = relations(rolePermission, ({ one }) => ({
   role: one(role, { fields: [rolePermission.roleId], references: [role.id] }),
-  permission: one(permission, { fields: [rolePermission.permissionId], references: [permission.id] }),
+  permission: one(permission, {
+    fields: [rolePermission.permissionId],
+    references: [permission.id],
+  }),
 }));
 
-export const userRoleRelations = relations(userRole, ({ one }) => ({
-  user: one(user, { fields: [userRole.userId], references: [user.id] }),
-  role: one(role, { fields: [userRole.roleId], references: [role.id] }),
+export const userPermissionRelations = relations(userPermission, ({ one }) => ({
+  user: one(user, { fields: [userPermission.userId], references: [user.id] }),
+  permission: one(permission, {
+    fields: [userPermission.permissionId],
+    references: [permission.id],
+  }),
 }));
-

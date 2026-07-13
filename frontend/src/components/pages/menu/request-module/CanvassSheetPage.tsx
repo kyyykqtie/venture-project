@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus } from "lucide-react"
+import { usePermissions } from "@/context/AuthContext"
 
 import { StageWorkspaceShell, getRequest, type RequestPdfLineItem } from "./workflow"
 
@@ -50,6 +51,9 @@ function createRow(item: RequestPdfLineItem, supplierCount: number): CanvassRow 
 export function CanvassSheetPage() {
   const { requestId } = useParams()
   const request = getRequest(requestId)
+  const { hasPermission } = usePermissions()
+  const canProcess = hasPermission("process_canvass")
+  const canApprove = hasPermission("approve_canvass")
   const initialSupplierCount = 3
 
   const [suppliers, setSuppliers] = useState<CanvassSupplier[]>(() =>
@@ -119,17 +123,23 @@ export function CanvassSheetPage() {
       request={request}
       action={
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={addSupplier}>
-            <Plus className="mr-2 size-4" />
-            Add Supplier
-          </Button>
-          <Button variant="outline" size="sm" onClick={addRow}>
-            <Plus className="mr-2 size-4" />
-            Add Item Row
-          </Button>
-          <Button asChild size="sm">
-            <Link to={`/requests/${request.id}/canvass/review`}>Open Review</Link>
-          </Button>
+          {canProcess && (
+            <Button variant="outline" size="sm" onClick={addSupplier}>
+              <Plus className="mr-2 size-4" />
+              Add Supplier
+            </Button>
+          )}
+          {canProcess && (
+            <Button variant="outline" size="sm" onClick={addRow}>
+              <Plus className="mr-2 size-4" />
+              Add Item Row
+            </Button>
+          )}
+          {canApprove && (
+            <Button asChild size="sm">
+              <Link to={`/requests/${request.id}/canvass/review`}>Open Review</Link>
+            </Button>
+          )}
         </div>
       }
     >
@@ -273,7 +283,7 @@ export function CanvassSheetPage() {
             </CardHeader>
             <CardContent className="space-y-3 p-4 text-sm text-muted-foreground">
               <p>Use this canvas to compare supplier totals and prepare the review step.</p>
-              <Button className="w-full" size="sm">
+              <Button className="w-full" size="sm" disabled={!canProcess}>
                 Save Canvass
               </Button>
               {/* BACKEND TODO: save and update canvass records through the request workflow API, including audit metadata and approval-ready state changes. */}

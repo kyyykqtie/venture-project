@@ -185,30 +185,6 @@ async function seed() {
       .set({ role: 'admin' })
       .where(eq(authSchema.user.email, SUPERADMIN_EMAIL));
     console.log('   ✅ Role confirmed as admin.');
-    // ensure user_role link exists
-    const user = await db
-      .select()
-      .from(authSchema.user)
-      .where(eq(authSchema.user.email, SUPERADMIN_EMAIL))
-      .limit(1);
-    if (user.length > 0 && adminRoleId) {
-      const link = await db
-        .select()
-        .from(authSchema.userRole)
-        .where(
-          and(
-            eq(authSchema.userRole.userId, user[0].id),
-            eq(authSchema.userRole.roleId, adminRoleId),
-          ),
-        )
-        .limit(1);
-      if (link.length === 0) {
-        await db.insert(authSchema.userRole).values({ userId: user[0].id, roleId: adminRoleId });
-        console.log('   ✅ Linked existing superadmin to admin role.');
-      } else {
-        console.log('   ⏭  superadmin already linked to admin role.');
-      }
-    }
     await pool.end();
     return;
   }
@@ -232,30 +208,6 @@ async function seed() {
     .set({ role: 'admin' })
     .where(eq(authSchema.user.email, SUPERADMIN_EMAIL));
 
-  // link newly created user to admin role
-  const createdUser = await db
-    .select()
-    .from(authSchema.user)
-    .where(eq(authSchema.user.email, SUPERADMIN_EMAIL))
-    .limit(1);
-  if (createdUser.length > 0 && adminRoleId) {
-    const link = await db
-      .select()
-      .from(authSchema.userRole)
-      .where(
-        and(
-          eq(authSchema.userRole.userId, createdUser[0].id),
-          eq(authSchema.userRole.roleId, adminRoleId),
-        ),
-      )
-      .limit(1);
-    if (link.length === 0) {
-      await db.insert(authSchema.userRole).values({ userId: createdUser[0].id, roleId: adminRoleId });
-      console.log('   ✅ Linked superadmin to admin role.');
-    } else {
-      console.log('   ⏭  superadmin already linked to admin role.');
-    }
-  }
 
   console.log('   ✅ Superadmin created successfully.');
   console.log(`      Email   : ${SUPERADMIN_EMAIL}`);

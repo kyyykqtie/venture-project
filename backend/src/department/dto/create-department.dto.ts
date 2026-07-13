@@ -1,6 +1,6 @@
 import { IsOptional, IsString, Length } from 'class-validator';
 
-export class CreateRoleDto {
+export class CreateDepartmentDto {
   @IsString()
   @Length(1, 100)
   name!: string;

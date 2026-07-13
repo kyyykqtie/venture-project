@@ -41,8 +41,14 @@ export function AppRoutes() {
         <Route path="/requests">
           <Route index element={<Navigate to="my" replace />} />
           <Route path="my" element={<MyRequest />} />
-          <Route path="all" element={<Allrequest />} />
-          <Route path="new" element={<CreateRequestPage />} />
+          {/* All requests — requires view_all_records */}
+          <Route element={<ProtectedRoute requiredPermission="view_all_records" />}>
+            <Route path="all" element={<Allrequest />} />
+          </Route>
+          {/* Create request — requires create_request */}
+          <Route element={<ProtectedRoute requiredPermission="create_request" />}>
+            <Route path="new" element={<CreateRequestPage />} />
+          </Route>
           <Route path=":requestId" element={<RequestDetailPage />} />
           <Route path=":requestId/approval" element={<ApprovalReviewPage />} />
           <Route path=":requestId/purchase-order" element={<PurchaseOrderPage />} />
@@ -53,17 +59,15 @@ export function AppRoutes() {
           <Route path=":requestId/completed" element={<RequestCompletedPage />} />
         </Route>
 
+        {/* ── Admin-only routes ───────────────────────────────────────────── */}
+        {/* User provisioning — requires manage_users */}
+        <Route element={<ProtectedRoute requiredPermission="manage_users" />}>
+          <Route path="/user-provisioning" element={<UserProvisioningPage />} />
+        </Route>
 
-        {/* ================= PROTECTED ================= */}
-        <Route element={<ProtectedRoute />}>
-          <Route
-            path="/user-provisioning"
-            element={<UserProvisioningPage />}
-          />
-          <Route
-            path="/roles-permissions"
-            element={<RolesPermissionsPage />}
-          />
+        {/* Roles & permissions — requires manage_roles_permissions */}
+        <Route element={<ProtectedRoute requiredPermission="manage_roles_permissions" />}>
+          <Route path="/roles-permissions" element={<RolesPermissionsPage />} />
         </Route>
 
         <Route path="/settings" element={<SettingsPage />} />

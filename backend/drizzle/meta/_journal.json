@@ -29,6 +29,20 @@
       "when": 1783924215763,
       "tag": "0003_faithful_wendell_vaughn",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783936057911,
+      "tag": "0004_living_venus",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783937432779,
+      "tag": "0005_spicy_hex",
+      "breakpoints": true
     }
   ]
 }

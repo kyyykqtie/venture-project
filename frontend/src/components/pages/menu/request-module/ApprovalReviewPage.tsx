@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { CheckCircle2, OctagonAlert } from "lucide-react"
+import { usePermissions } from "@/context/AuthContext"
 
 import { StageWorkspaceShell, getRequest } from "./workflow"
 
@@ -18,6 +19,11 @@ type DecisionMode = "approve" | "return"
 export function ApprovalReviewPage() {
   const { requestId } = useParams()
   const request = getRequest(requestId)
+  const { hasPermission } = usePermissions()
+  const canApproveInitial = hasPermission("approve_request_initial")
+  const canApproveFinal = hasPermission("approve_request_final")
+  const canAnyApprove = canApproveInitial || canApproveFinal
+
   const [decisionMode, setDecisionMode] = useState<DecisionMode>("approve")
   const [decisionNote, setDecisionNote] = useState("")
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -116,27 +122,48 @@ export function ApprovalReviewPage() {
           <CardContent className="space-y-4 p-4">
             {/* BACKEND TODO: connect approval actions to the request_workflow_actions table, enforce RBAC permissions, and persist the approver decision with a server timestamp. */}
 
+            {!canAnyApprove && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                You do not have permission to approve requests. Contact your administrator to request access.
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Decision</Label>
               <div className="grid gap-2">
-                <Button
-                  type="button"
-                  variant={decisionMode === "approve" ? "default" : "outline"}
-                  className="justify-start"
-                  onClick={() => setDecisionMode("approve")}
-                >
-                  <CheckCircle2 className="mr-2 size-4" />
-                  Approve and Continue
-                </Button>
-                <Button
-                  type="button"
-                  variant={decisionMode === "return" ? "secondary" : "outline"}
-                  className="justify-start"
-                  onClick={() => setDecisionMode("return")}
-                >
-                  <OctagonAlert className="mr-2 size-4" />
-                  Return for Revision
-                </Button>
+                {canApproveInitial && (
+                  <Button
+                    type="button"
+                    variant={decisionMode === "approve" ? "default" : "outline"}
+                    className="justify-start"
+                    onClick={() => setDecisionMode("approve")}
+                  >
+                    <CheckCircle2 className="mr-2 size-4" />
+                    Approve (Initial)
+                  </Button>
+                )}
+                {canApproveFinal && (
+                  <Button
+                    type="button"
+                    variant={decisionMode === "approve" ? "default" : "outline"}
+                    className="justify-start"
+                    onClick={() => setDecisionMode("approve")}
+                  >
+                    <CheckCircle2 className="mr-2 size-4" />
+                    Approve (Final)
+                  </Button>
+                )}
+                {canAnyApprove && (
+                  <Button
+                    type="button"
+                    variant={decisionMode === "return" ? "secondary" : "outline"}
+                    className="justify-start"
+                    onClick={() => setDecisionMode("return")}
+                  >
+                    <OctagonAlert className="mr-2 size-4" />
+                    Return for Revision
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -153,7 +180,7 @@ export function ApprovalReviewPage() {
               </div>
             ) : null}
 
-            <Button className="w-full" size="sm" onClick={() => openConfirmation(decisionMode)}>
+            <Button className="w-full" size="sm" disabled={!canAnyApprove} onClick={() => openConfirmation(decisionMode)}>
               {decisionMode === "approve" ? "Approve and Continue" : "Return for Revision"}
             </Button>
           </CardContent>

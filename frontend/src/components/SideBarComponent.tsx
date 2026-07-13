@@ -41,11 +41,19 @@ import {
 } from "lucide-react"
 
 import { NavLink, Outlet, useLocation } from "react-router-dom"
-import { useEffect, useState } from "react"
+import { useAuth, type PermissionName } from "@/context/AuthContext"
 
 const API_BASE = "http://localhost:3000"
 
-const mainNavigation = [
+interface NavItem {
+  title: string
+  url: string
+  icon: React.ElementType
+  /** If set, the item is only shown when the user has this permission (admins always see it). */
+  requiredPermission?: PermissionName
+}
+
+const mainNavigation: NavItem[] = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -53,25 +61,27 @@ const mainNavigation = [
   },
 ]
 
-const requestManagement = [
+const requestManagement: NavItem[] = [
   {
     title: "All Requests",
-    url: "/allrequest",
+    url: "/requests/all",
     icon: Inbox,
+    requiredPermission: "view_all_records",
   },
   {
     title: "My Requests",
-    url: "/myrequest",
+    url: "/requests/my",
     icon: Calendar,
   },
   {
     title: "Create Request",
-    url: "/create-request",
+    url: "/requests/new",
     icon: FilePlus2,
+    requiredPermission: "create_request",
   },
 ]
 
-const procurementManagement = [
+const procurementManagement: NavItem[] = [
   {
     title: "Requests",
     url: "/procurement/requests",
@@ -79,28 +89,27 @@ const procurementManagement = [
   },
 ]
 
-const administration = [
+const administration: NavItem[] = [
   {
     title: "User Provisioning",
     url: "/user-provisioning",
     icon: Users,
+    requiredPermission: "manage_users",
   },
   {
     title: "Roles & Permissions",
     url: "/roles-permissions",
     icon: Shield,
+    requiredPermission: "manage_roles_permissions",
   },
 ]
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/allrequest": "All Requests",
-  "/myrequest": "My Requests",
-  "/create-request": "Create Request",
-  "/procurement/requests": "Procurement Requests",
   "/requests/all": "All Requests",
   "/requests/my": "My Requests",
   "/requests/new": "Create Request",
+  "/procurement/requests": "Procurement Requests",
   "/user-provisioning": "User Provisioning",
   "/roles-permissions": "Roles & Permissions",
   "/settings": "Settings",
@@ -108,33 +117,17 @@ const routeTitles: Record<string, string> = {
 
 function getPageTitle(pathname: string) {
   const exactTitle = routeTitles[pathname]
-  if (exactTitle) {
-    return exactTitle
-  }
+  if (exactTitle) return exactTitle
 
   if (pathname.startsWith("/requests/")) {
     const parts = pathname.split("/").filter(Boolean)
-
-    if (parts.length >= 3 && parts[2] === "approval") {
-      return "Approval Review"
-    }
-
-    if (parts.length >= 3 && parts[2] === "purchase-order") {
-      return "Purchase Order"
-    }
-
+    if (parts.length >= 3 && parts[2] === "approval") return "Approval Review"
+    if (parts.length >= 3 && parts[2] === "purchase-order") return "Purchase Order"
     if (parts.length >= 3 && parts[2] === "canvass") {
       return parts[3] === "review" ? "Canvass Review" : "Canvass Sheet"
     }
-
-    if (parts.length >= 3 && parts[2] === "receiving") {
-      return "Receiving"
-    }
-
-    if (parts.length >= 3 && parts[2] === "completed") {
-      return "Completed"
-    }
-
+    if (parts.length >= 3 && parts[2] === "receiving") return "Receiving"
+    if (parts.length >= 3 && parts[2] === "completed") return "Completed"
     return "Request Detail"
   }
 
@@ -142,10 +135,7 @@ function getPageTitle(pathname: string) {
 }
 
 function getInitials(name?: string | null) {
-  if (!name) {
-    return "U"
-  }
-
+  if (!name) return "U"
   return name
     .split(" ")
     .filter(Boolean)
@@ -154,24 +144,55 @@ function getInitials(name?: string | null) {
     .join("")
 }
 
+function NavGroup({
+  label,
+  items,
+  isAdmin,
+  hasPermission,
+}: {
+  label: string
+  items: NavItem[]
+  isAdmin: boolean
+  hasPermission: (p: PermissionName) => boolean
+}) {
+  const visible = items.filter(
+    (item) => !item.requiredPermission || isAdmin || hasPermission(item.requiredPermission),
+  )
+  if (visible.length === 0) return null
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {visible.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton asChild tooltip={item.title}>
+                <NavLink to={item.url}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  )
+}
+
 export function SidebarDemo() {
   const { data: session, isPending: isSessionLoading } = authClient.useSession()
   const location = useLocation()
-  const [departmentName, setDepartmentName] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!session?.user?.id) return
-    fetch(`${API_BASE}/users/me`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => setDepartmentName(data?.departmentName ?? null))
-      .catch(() => null)
-  }, [session?.user?.id])
+  const { user, hasPermission } = useAuth()
 
   const pageTitle = getPageTitle(location.pathname)
-  const user = session?.user
-  const userName = user?.name ?? (isSessionLoading ? "Loading..." : "Guest")
-  const userEmail = user?.email ?? (isSessionLoading ? "Fetching session..." : "No account found")
-  const userImage = user?.image ?? ""
+  const authUser = session?.user
+  const userName = authUser?.name ?? (isSessionLoading ? "Loading..." : "Guest")
+  const userEmail = authUser?.email ?? (isSessionLoading ? "Fetching session..." : "No account found")
+  const userImage = authUser?.image ?? ""
+  const departmentName = user?.departmentName ?? null
+  const isAdmin = authUser?.role === "admin"
 
   return (
     <SidebarProvider>
@@ -183,77 +204,30 @@ export function SidebarDemo() {
             </div>
           </SidebarHeader>
           <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>MAIN NAVIGATION</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {mainNavigation.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild tooltip={item.title}>
-                        <NavLink to={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarGroup>
-              <SidebarGroupLabel>REQUEST MANAGEMENT</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {requestManagement.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild tooltip={item.title}>
-                        <NavLink to={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarGroup>
-              <SidebarGroupLabel>PROCUREMENT REQUESTS</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {procurementManagement.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild tooltip={item.title}>
-                        <NavLink to={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarGroup>
-              <SidebarGroupLabel>ADMINISTRATION</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {administration.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild tooltip={item.title}>
-                        <NavLink to={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            <NavGroup
+              label="MAIN NAVIGATION"
+              items={mainNavigation}
+              isAdmin={isAdmin}
+              hasPermission={hasPermission}
+            />
+            <NavGroup
+              label="REQUEST MANAGEMENT"
+              items={requestManagement}
+              isAdmin={isAdmin}
+              hasPermission={hasPermission}
+            />
+            <NavGroup
+              label="PROCUREMENT REQUESTS"
+              items={procurementManagement}
+              isAdmin={isAdmin}
+              hasPermission={hasPermission}
+            />
+            <NavGroup
+              label="ADMINISTRATION"
+              items={administration}
+              isAdmin={isAdmin}
+              hasPermission={hasPermission}
+            />
           </SidebarContent>
 
           <SidebarFooter>
@@ -310,28 +284,21 @@ export function SidebarDemo() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <NavLink
-                      to="/settings"
-                      className="flex w-full items-center gap-2"
-                    >
+                    <NavLink to="/settings" className="flex w-full items-center gap-2">
                       <Settings className="size-4" />
                       <span>Settings</span>
-                      
                     </NavLink>
-                 
                   </DropdownMenuItem>
-
-                     <DropdownMenuItem asChild> 
+                  <DropdownMenuItem asChild>
                     <NavLink
-                    to="/"
-                    className="flex w-full items-center gap-2"
-                    onClick={() => authClient.signOut()}
-                  >
-                    <LogOut className="size-4" />
-                    <span>Sign Out</span>
-                     
+                      to="/"
+                      className="flex w-full items-center gap-2"
+                      onClick={() => authClient.signOut()}
+                    >
+                      <LogOut className="size-4" />
+                      <span>Sign Out</span>
                     </NavLink>
-                    </DropdownMenuItem>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </SidebarGroup>
