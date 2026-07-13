@@ -19,6 +19,12 @@ export class UserController {
     return this.userService.findMeWithDepartment(userId);
   }
 
+  /** Returns all users with their department names — for admin views */
+  @Get()
+  findAll() {
+    return this.userService.findAllWithDepartments();
+  }
+
   @Get('public')
   @Public()
   getPublic() {

@@ -31,4 +31,23 @@ export class UserService {
 
     return result[0] ?? null;
   }
+
+  async findAllWithDepartments() {
+    return this.db
+      .select({
+        id: schema.user.id,
+        name: schema.user.name,
+        email: schema.user.email,
+        role: schema.user.role,
+        image: schema.user.image,
+        departmentId: schema.user.departmentId,
+        departmentName: schema.department.name,
+      })
+      .from(schema.user)
+      .leftJoin(
+        schema.department,
+        eq(schema.user.departmentId, schema.department.id),
+      )
+      .orderBy(schema.user.name);
+  }
 }

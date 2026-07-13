@@ -10,10 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+const API_BASE = "http://localhost:3000"
+
 // Role hierarchy — order matters: admin is always at the top
 const ROLE_HIERARCHY = [
-  { value: "Administrator",    label: "Superadmin",    badge: "bg-red-100 text-red-700" },
-  { value: "Manager",  label: "Procurement Manager",  badge: "bg-blue-100 text-blue-700" },
+  { value: "admin",    label: "Superadmin",    badge: "bg-red-100 text-red-700" },
+  { value: "manager",  label: "Procurement Manager",  badge: "bg-blue-100 text-blue-700" },
   { value: "Approver", label: "Requisition Approver", badge: "bg-purple-100 text-purple-700" },
   { value: "user",     label: "Requestor",     badge: "bg-gray-100 text-gray-600" },
 ] as const
@@ -24,7 +26,7 @@ interface User {
   email: string
   image?: string | null
   role?: string | null
-  department?: string | null
+  departmentName?: string | null
 }
 
 function getRoleMeta(role?: string | null) {
@@ -78,12 +80,14 @@ export default function RolesPermissionsPage() {
     setIsLoading(true)
     setError(null)
     try {
-      const result = await authClient.admin.listUsers({ query: { limit: 100 } })
-      if (result.error) {
-        setError(result.error.message ?? "Failed to load users.")
-      } else {
-        setUsers(sortUsers((result.data?.users as User[]) ?? []))
+      const res = await fetch(`${API_BASE}/users`, { credentials: "include" })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setError((body as { message?: string }).message ?? "Failed to load users.")
+        return
       }
+      const data: User[] = await res.json()
+      setUsers(sortUsers(data))
     } catch {
       setError("An unexpected error occurred while loading users.")
     } finally {
@@ -225,7 +229,7 @@ function UserRow({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm font-medium text-gray-900">{user.name}</span>
-        <span className="truncate text-xs text-gray-500">{user.department ?? "No Department"}</span>
+        <span className="truncate text-xs text-gray-500">{user.departmentName ?? "No Department"}</span>
         <span className="truncate text-xs text-gray-500">{user.email}</span>
       </div>
 
