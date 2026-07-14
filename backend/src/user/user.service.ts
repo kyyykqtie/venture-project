@@ -23,15 +23,32 @@ export class UserService {
         permissionName: schema.permission.name,
       })
       .from(schema.user)
-      .leftJoin(schema.department, eq(schema.user.departmentId, schema.department.id))
-      .leftJoin(schema.userPermission, eq(schema.userPermission.userId, schema.user.id))
-      .leftJoin(schema.permission, eq(schema.permission.id, schema.userPermission.permissionId))
+      .leftJoin(
+        schema.department,
+        eq(schema.user.departmentId, schema.department.id),
+      )
+      .leftJoin(
+        schema.userPermission,
+        eq(schema.userPermission.userId, schema.user.id),
+      )
+      .leftJoin(
+        schema.permission,
+        eq(schema.permission.id, schema.userPermission.permissionId),
+      )
       .execute();
 
-    const map = new Map<string, {
-      id: string; name: string; email: string; image?: string | null;
-      role: string; departmentName?: string | null; permissions: string[];
-    }>();
+    const map = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        email: string;
+        image?: string | null;
+        role: string;
+        departmentName?: string | null;
+        permissions: string[];
+      }
+    >();
 
     for (const row of rows) {
       const perm = row.permissionName ?? null;
@@ -65,7 +82,10 @@ export class UserService {
         departmentName: schema.department.name,
       })
       .from(schema.user)
-      .leftJoin(schema.department, eq(schema.user.departmentId, schema.department.id))
+      .leftJoin(
+        schema.department,
+        eq(schema.user.departmentId, schema.department.id),
+      )
       .where(eq(schema.user.id, userId))
       .execute();
 
@@ -82,7 +102,11 @@ export class UserService {
   }
 
   async findById(userId: string) {
-    const [user] = await this.db.select().from(schema.user).where(eq(schema.user.id, userId)).execute();
+    const [user] = await this.db
+      .select()
+      .from(schema.user)
+      .where(eq(schema.user.id, userId))
+      .execute();
     return user;
   }
 }

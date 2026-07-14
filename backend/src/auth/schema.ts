@@ -4,6 +4,8 @@ import {
   text,
   timestamp,
   boolean,
+  jsonb,
+  numeric,
   index,
   primaryKey,
 } from 'drizzle-orm/pg-core';
@@ -100,6 +102,7 @@ export const verification = pgTable(
 
 export const departmentRelations = relations(department, ({ many }) => ({
   users: many(user),
+  purchaseRequests: many(purchaseRequest),
 }));
 
 export const userRelations = relations(user, ({ many, one }) => ({
@@ -110,6 +113,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
     references: [department.id],
   }),
   userPermissions: many(userPermission),
+  purchaseRequests: many(purchaseRequest),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -208,3 +212,55 @@ export const userPermissionRelations = relations(userPermission, ({ one }) => ({
     references: [permission.id],
   }),
 }));
+
+// ── Purchase Request ─────────────────────────────────────────────────────────
+
+export const purchaseRequest = pgTable(
+  'purchase_request',
+  {
+    id: text('id').primaryKey(),
+    requestNumber: text('request_number').notNull().unique(), // e.g. REQ-0001
+
+    // Who / where
+    departmentId: text('department_id')
+      .notNull()
+      .references(() => department.id, { onDelete: 'restrict' }),
+    requestedByUserId: text('requested_by_user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'restrict' }),
+
+    // Top-level scalar fields for querying / filtering / sorting
+    title: text('title').notNull(),
+    budget: numeric('budget', { precision: 12, scale: 2 }).default('0'),
+    requestDate: timestamp('request_date').notNull(),
+    dateNeeded: timestamp('date_needed'),
+    status: text('status').default('draft').notNull(), // draft | submitted | approved | rejected | ...
+
+    // Variable / form-shaped data (contact info, shipping, items[], remarks, etc.)
+    draft: jsonb('draft').notNull(),
+
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('purchase_request_department_idx').on(table.departmentId),
+    index('purchase_request_requested_by_idx').on(table.requestedByUserId),
+  ],
+);
+
+export const purchaseRequestRelations = relations(
+  purchaseRequest,
+  ({ one }) => ({
+    department: one(department, {
+      fields: [purchaseRequest.departmentId],
+      references: [department.id],
+    }),
+    requestedBy: one(user, {
+      fields: [purchaseRequest.requestedByUserId],
+      references: [user.id],
+    }),
+  }),
+);

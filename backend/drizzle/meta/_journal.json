@@ -43,6 +43,13 @@
       "when": 1783937432779,
       "tag": "0005_spicy_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783993911976,
+      "tag": "0006_lyrical_loners",
+      "breakpoints": true
     }
   ]
 }

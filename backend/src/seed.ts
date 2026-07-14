@@ -13,21 +13,25 @@ import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 const DEFAULT_DEPARTMENTS = [
-  { 
-    name: 'Operations',  
-    description: 'Handles daily business operations, processes, and organizational efficiency' 
+  {
+    name: 'Operations',
+    description:
+      'Handles daily business operations, processes, and organizational efficiency',
   },
-  { 
-    name: 'Sales & Marketing',        
-    description: 'Manages sales activities, marketing strategies, and customer relationships' 
+  {
+    name: 'Sales & Marketing',
+    description:
+      'Manages sales activities, marketing strategies, and customer relationships',
   },
-  { 
-    name: 'HR',           
-    description: 'Manages employee relations, recruitment, and workforce development' 
+  {
+    name: 'HR',
+    description:
+      'Manages employee relations, recruitment, and workforce development',
   },
-  { 
-    name: 'Finance',      
-    description: 'Handles budgeting, accounting, financial planning, and reporting' 
+  {
+    name: 'Finance',
+    description:
+      'Handles budgeting, accounting, financial planning, and reporting',
   },
 ];
 
@@ -123,7 +127,9 @@ async function seed() {
       .limit(1);
   } else {
     const rid = randomUUID();
-    await db.insert(authSchema.role).values({ id: rid, name: 'admin', description: null, isSystem: true });
+    await db
+      .insert(authSchema.role)
+      .values({ id: rid, name: 'admin', description: null, isSystem: true });
     console.log('   ✅ Created admin role');
     adminRole = await db
       .select()
@@ -160,7 +166,9 @@ async function seed() {
         continue;
       }
 
-      await db.insert(authSchema.rolePermission).values({ roleId: adminRoleId, permissionId: perm[0].id });
+      await db
+        .insert(authSchema.rolePermission)
+        .values({ roleId: adminRoleId, permissionId: perm[0].id });
       console.log(`   ✅ Assigned admin -> ${name}`);
     }
   }
@@ -207,7 +215,6 @@ async function seed() {
     .update(authSchema.user)
     .set({ role: 'admin' })
     .where(eq(authSchema.user.email, SUPERADMIN_EMAIL));
-
 
   console.log('   ✅ Superadmin created successfully.');
   console.log(`      Email   : ${SUPERADMIN_EMAIL}`);

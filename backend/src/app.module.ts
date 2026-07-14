@@ -9,12 +9,14 @@ import { admin } from 'better-auth/plugins';
 import { DATABASE_CONNECTION } from './database/database.connection';
 import { UserModule } from './user/user.module';
 import { DepartmentModule } from './department/department.module';
+import { PurchaseRequestsModule } from './request_creation/request.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     UserModule,
     DepartmentModule,
+    PurchaseRequestsModule,
     ConfigModule.forRoot(),
     AuthModule.forRootAsync({
       imports: [DatabaseModule, ConfigModule],

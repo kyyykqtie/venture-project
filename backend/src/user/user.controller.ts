@@ -62,7 +62,9 @@ export class UserController {
     @Req() req: any,
   ) {
     if (!this.isAdmin(req as AuthRequest)) {
-      throw new ForbiddenException('Only admin users can update user roles and permissions');
+      throw new ForbiddenException(
+        'Only admin users can update user roles and permissions',
+      );
     }
     return this.roleService.setUserRoleAndPermissions(
       userId,
