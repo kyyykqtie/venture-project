@@ -7,10 +7,10 @@ import {
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '../auth/schema';
-import { user, purchaseRequest } from '../auth/schema';
-import { DATABASE_CONNECTION } from '../database/database.connection';
-import { CreatePurchaseRequestDto } from './request-creation.dto';
+import * as schema from '../../auth/schema';
+import { user, purchaseRequest } from '../../auth/schema';
+import { DATABASE_CONNECTION } from '../../database/database.connection';
+import { CreatePurchaseRequestDto } from './request.dto';
 
 @Injectable()
 export class PurchaseRequestsService {

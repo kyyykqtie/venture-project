@@ -44,7 +44,7 @@ export class UserController {
     if (!base) throw new UnauthorizedException();
 
     const permissions = this.isAdmin(authReq)
-      ? await this.permissionService.resolveAllPermissions()
+      ? this.permissionService.resolveAllPermissions()
       : Array.from(await this.permissionService.resolvePermissions(userId));
 
     return { ...base, permissions };

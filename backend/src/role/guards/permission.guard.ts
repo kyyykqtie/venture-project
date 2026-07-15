@@ -1,24 +1,44 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSION_KEY } from '../decorators/require-permission.decorator';
 import { PermissionService } from '../permission.service';
+import { PERMISSIONS, PermissionName } from '../permission.constants';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector, private readonly permissionService: PermissionService) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly permissionService: PermissionService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.get<string | undefined>(PERMISSION_KEY, context.getHandler());
+    const required = this.reflector.get<PermissionName | undefined>(
+      PERMISSION_KEY,
+      context.getHandler(),
+    );
     if (!required) return true;
 
-    const req = context.switchToHttp().getRequest();
-    const user = req.user as { id?: string; role?: string } | undefined;
+    // Guard against unknown permission strings at runtime
+    if (!(PERMISSIONS as readonly string[]).includes(required)) {
+      throw new ForbiddenException();
+    }
+
+    const req = context
+      .switchToHttp()
+      .getRequest<{ user?: { id?: string; role?: string } }>();
+    const user = req.user;
     if (!user || !user.id) throw new UnauthorizedException();
 
     if (user.role === 'admin') return true;
 
     const perms = await this.permissionService.resolvePermissions(user.id);
-    if (perms.has(required as any)) return true;
+    if (perms.has(required)) return true;
     throw new ForbiddenException();
   }
 }

@@ -6,11 +6,11 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import type { AuthUser } from '../user/types';
-import { PermissionGuard } from '../role/guards/permission.guard';
-import { RequirePermission } from '../role/decorators/require-permission.decorator';
-import { CreatePurchaseRequestDto } from './request-creation.dto';
-import { PurchaseRequestsService } from './request.service';
+import type { AuthUser } from '../../user/types';
+import { PermissionGuard } from '../../role/guards/permission.guard';
+import { RequirePermission } from '../../role/decorators/require-permission.decorator';
+import { CreatePurchaseRequestDto } from './request.dto';
+import { PurchaseRequestsService } from './request-creation.service';
 
 interface AuthRequest {
   user?: AuthUser;

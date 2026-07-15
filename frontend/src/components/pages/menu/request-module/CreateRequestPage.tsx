@@ -20,7 +20,6 @@ import {
   ModulePageShell,
   type RequestFormData,
   type RequestPdfLineItem,
-  saveRequestDraft,
 } from "./workflow"
 
 const departmentOptions = ["Operations", "Finance", "HR", "SalesMarketing"] as const
@@ -83,6 +82,8 @@ export function CreateRequestPage() {
   const [draft, setDraft] = useState<RequestFormData>(() => createInitialDraft())
   const today = useMemo(() => new Date().toISOString().split("T")[0], [])
   const [deliveryDateError, setDeliveryDateError] = useState("")
+  const [submitError, setSubmitError] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const subtotal = draft.lineItems.reduce((total, item) => total + parseCurrency(item.estimatedCost), 0)
 
@@ -149,20 +150,56 @@ export function CreateRequestPage() {
     setDeliveryDateError("")
   }
 
-  const handleSubmitDraft = () => {
-    if (deliveryDateError) {
-      return
+  const handleSubmitDraft = async () => {
+    if (deliveryDateError) return
+
+    setSubmitError("")
+    setIsSubmitting(true)
+
+    try {
+      const payload = {
+        requestNumber: draft.id,
+        title: draft.title,
+        budget: draft.budget ? Number(draft.budget) : undefined,
+        requestDate: draft.requestDate,
+        dateNeeded: draft.dateNeeded || undefined,
+        phoneNumber: draft.phone || undefined,
+        address: draft.address || undefined,
+        shippingTerms: draft.shippingTerms || undefined,
+        shippingMethod: draft.shippingMethod || undefined,
+        delivery: draft.deliveryDate || undefined,
+        remarks: draft.remarks || undefined,
+        items: draft.lineItems.map((item) => ({
+          description: item.description,
+          qty: item.quantity,
+          unit: item.unit,
+          unitPrice: parseCurrency(item.unitPrice ?? "0"),
+        })),
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/purchase-requests`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        },
+      )
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        const msg = (error as { message?: string }).message ?? "Failed to submit request"
+        throw new Error(msg)
+      }
+
+      const created = await response.json() as { id: string; requestNumber: string }
+      navigate(`/requests/${created.requestNumber}`)
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Something went wrong. Please try again.")
+    } finally {
+      setIsSubmitting(false)
     }
-
-    // BACKEND TODO:
-    // - Generate a UUID for the internal request record and persist the request.
-    // - Generate the display request number (for example PR-2026-000147) on the server.
-    // - Re-validate the delivery date on the server using YYYY-MM-DD and the business rule that it cannot be earlier than today.
-    // - Enforce field ownership per role on every update request so requestors, approvers, and procurement can only edit their allowed fields.
-
-    saveRequestDraft(draft)
-
-    navigate(`/requests/${draft.id}`)
   }
 
   return (
@@ -451,7 +488,6 @@ export function CreateRequestPage() {
                 placeholder="Add supporting notes, delivery instructions, or special handling details."
               />
             </div>
-            {/* BACKEND TODO: persist this draft to the procurement_requests table and procurement_request_items table, then replace the static request number with the server-generated sequence. */}
             <div className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Estimated subtotal:</span> {formatCurrency(subtotal)}
             </div>
@@ -465,14 +501,17 @@ export function CreateRequestPage() {
                   Submit when the draft is complete. The same field set will feed approval, canvass, and PDF rendering.
                 </p>
               </div>
-              <Button size="lg" className="min-w-44 px-8" onClick={handleSubmitDraft}>
-                Submit Draft
+              {submitError ? (
+                <p className="text-sm text-destructive">{submitError}</p>
+              ) : null}
+              <Button size="lg" className="min-w-44 px-8" onClick={handleSubmitDraft} disabled={isSubmitting}>
+                {isSubmitting ? "Submitting…" : "Submit Draft"}
               </Button>
             </div>
-            {/* BACKEND TODO: connect submit handling to authentication, RBAC checks, and the request creation endpoint. */}
           </div>
         </CardContent>
       </Card>
+
     </ModulePageShell>
   )
 }

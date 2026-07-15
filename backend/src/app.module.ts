@@ -9,7 +9,8 @@ import { admin } from 'better-auth/plugins';
 import { DATABASE_CONNECTION } from './database/database.connection';
 import { UserModule } from './user/user.module';
 import { DepartmentModule } from './department/department.module';
-import { PurchaseRequestsModule } from './request_creation/request.module';
+import { PurchaseRequestsModule } from './permissions/request/request-creation.module';
+import { ApprovalsModule } from './permissions/approvals/approvals.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
@@ -17,6 +18,7 @@ import { APP_GUARD } from '@nestjs/core';
     UserModule,
     DepartmentModule,
     PurchaseRequestsModule,
+    ApprovalsModule,
     ConfigModule.forRoot(),
     AuthModule.forRootAsync({
       imports: [DatabaseModule, ConfigModule],

@@ -6,7 +6,7 @@ export class PermissionController {
   constructor(private readonly permissionService: PermissionService) {}
 
   @Get()
-  async getPermissions() {
-    return { permissions: await this.permissionService.resolveAllPermissions() };
+  getPermissions() {
+    return { permissions: this.permissionService.resolveAllPermissions() };
   }
 }
