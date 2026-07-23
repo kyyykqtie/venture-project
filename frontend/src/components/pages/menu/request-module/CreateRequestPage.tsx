@@ -39,7 +39,7 @@ function createBlankLineItem(): RequestPdfLineItem {
 function createInitialDraft(): RequestFormData {
   const today = new Date()
   return {
-    id: "REQ-0001",
+    id: "",
     title: "",
     department: "Operations",
     budget: "",
@@ -62,6 +62,19 @@ function createInitialDraft(): RequestFormData {
 
     lineItems: [createBlankLineItem()],
   }
+}
+
+
+function formatNumberInput(raw: string): string {
+  const cleaned = raw.replace(/[^\d.]/g, "")
+  const [intPart, ...rest] = cleaned.split(".")
+  const decimalPart = rest.length > 0 ? "." + rest.join("").slice(0, 2) : ""
+  const withCommas = (intPart || "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  return withCommas + decimalPart
+}
+
+function unformatNumberInput(formatted: string): string {
+  return formatted.replace(/,/g, "")
 }
 
 function parseCurrency(value: string) {
@@ -194,6 +207,18 @@ export function CreateRequestPage() {
       }
 
       const created = await response.json() as { id: string; requestNumber: string }
+
+      const submitResponse = await fetch(
+        `${import.meta.env.VITE_API_URL}/purchase-requests/${created.id}/submit`,
+        { method: "PATCH", credentials: "include" },
+      )
+
+      if (!submitResponse.ok) {
+        const error = await submitResponse.json().catch(() => ({}))
+        const msg = (error as { message?: string }).message ?? "Request was created but could not be submitted for approval"
+        throw new Error(msg)
+      }
+
       navigate(`/requests/${created.requestNumber}`)
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Something went wrong. Please try again.")
@@ -223,16 +248,7 @@ export function CreateRequestPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 p-4 md:p-5">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="request-number">Request Number</Label>
-              <Input
-                id="request-number"
-                value={draft.id}
-                readOnly
-                placeholder="Assigned by the backend after submission"
-              />
-            </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="request-title">Request Title</Label>
               <Input
@@ -246,13 +262,11 @@ export function CreateRequestPage() {
               <Label htmlFor="budget">Budget</Label>
               <Input
                 id="budget"
-                type="number"
+                type="text"
                 inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={draft.budget}
-                onChange={(event) => updateField("budget", event.target.value)}
-                placeholder="0.00"
+                value={formatNumberInput(draft.budget)}
+                onChange={(event) => updateField("budget", unformatNumberInput(event.target.value))}
+                placeholder=""
               />
             </div>
           </div>
@@ -395,7 +409,7 @@ export function CreateRequestPage() {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold">Requested Materials / Services</h3>
+                <h3 className="text-sm font-semibold">Requested Materials</h3>
                 <p className="text-sm text-muted-foreground">Enter the items needed for the request. Quantity and price inputs stay typed for later backend mapping.</p>
               </div>
               <Button variant="outline" size="sm" onClick={addLineItem}>
@@ -446,12 +460,10 @@ export function CreateRequestPage() {
                       </td>
                       <td className="px-4 py-3 align-top">
                         <Input
-                          type="number"
+                          type="text"
                           inputMode="decimal"
-                          min="0"
-                          step="0.01"
-                          value={item.unitPrice}
-                          onChange={(event) => updateLineItem(index, "unitPrice", event.target.value)}
+                          value={formatNumberInput(item.unitPrice ?? "0")}
+                          onChange={(event) => updateLineItem(index, "unitPrice", unformatNumberInput(event.target.value))}
                           placeholder="0.00"
                         />
                       </td>

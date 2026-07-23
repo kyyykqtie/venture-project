@@ -14,4 +14,5 @@ export const PERMISSIONS = [
   'system_configuration',
 ] as const;
 
+
 export type PermissionName = (typeof PERMISSIONS)[number];

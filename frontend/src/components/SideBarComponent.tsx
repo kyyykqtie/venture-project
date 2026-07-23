@@ -70,10 +70,10 @@ const mainNavigation: NavItem[] = [
 
 const requestManagement: NavItem[] = [
   {
-    title: "All Requests",
+    title: "Requests",
     url: "/requests/all",
     icon: Inbox,
-    requiredPermission: ["view_all_records", "approve_request_initial"],
+    requiredPermission: ["view_all_records", "approve_request_initial", "approve_request_final"],
   },
   {
     title: "My Requests",
@@ -114,7 +114,7 @@ const administration: NavItem[] = [
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/requests/all": "All Requests",
+  "/requests/all": "Requests",
   "/requests/my": "My Requests",
   "/requests/new": "Create Request",
   "/procurement/requests": "Procurement Requests",

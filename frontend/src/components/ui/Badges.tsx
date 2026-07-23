@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 const departmentVariantMap = {
   HR: "HR",
   Finance: "Finance",
-  SalesMarketing: "SalesMarketing",
+  SalesMarketing: "Sales & Marketing",
   Operations: "Operations",
 } as const
 

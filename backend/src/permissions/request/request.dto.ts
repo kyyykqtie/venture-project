@@ -26,10 +26,7 @@ class RequestItemDto {
 }
 
 export class CreatePurchaseRequestDto {
-  @IsString()
-  @IsNotEmpty()
-  requestNumber: string;
-
+ 
   @IsString()
   @IsNotEmpty()
   title: string;

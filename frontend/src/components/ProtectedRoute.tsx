@@ -69,28 +69,25 @@ function AccessDeniedScreen({ message }: { message?: string }) {
 
 interface ProtectedRouteProps {
   /**
-   * When set, the route is only accessible to users who have this permission.
+   * When set, the route is only accessible to users who have this permission
+   * (or, if an array is given, at least one of them — OR semantics).
    * Admins always pass regardless of this value.
    */
-  requiredPermission?: PermissionName
+  requiredPermission?: PermissionName | PermissionName[]
 }
 
 export function ProtectedRoute({ requiredPermission }: ProtectedRouteProps = {}) {
   const { data: session, isPending } = authClient.useSession()
   const { user, isLoading, hasPermission } = useAuth()
 
-  // Wait for both session and /users/me to resolve
   if (isPending || isLoading) return null
 
-  // Not logged in at all
   if (!session) {
     return <Navigate to="/" replace />
   }
 
   const isAdmin = session.user.role === "admin"
 
-  // No specific permission required — just need to be logged in (and admin for
-  // the legacy admin-only pages).
   if (!requiredPermission) {
     if (!isAdmin) {
       return (
@@ -100,9 +97,10 @@ export function ProtectedRoute({ requiredPermission }: ProtectedRouteProps = {})
     return <Outlet />
   }
 
-  // Permission-gated route: admins always pass, others need the permission.
+  const required = Array.isArray(requiredPermission) ? requiredPermission : [requiredPermission]
+
   if (isAdmin) return <Outlet />
-  if (user && hasPermission(requiredPermission)) return <Outlet />
+  if (user && required.some((p) => hasPermission(p))) return <Outlet />
 
   return <AccessDeniedScreen />
 }

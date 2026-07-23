@@ -3,8 +3,10 @@ import {
   Controller,
   Post,
   Req,
+  Patch,
   UnauthorizedException,
   UseGuards,
+  Param,
 } from '@nestjs/common';
 import type { AuthUser } from '../../user/types';
 import { PermissionGuard } from '../../role/guards/permission.guard';
@@ -30,4 +32,15 @@ export class PurchaseRequestsController {
     if (!userId) throw new UnauthorizedException();
     return this.purchaseRequestsService.create(dto, userId);
   }
+
+
+    // PATCH /purchase-requests/:id/submit
+  @Patch(':id/submit')
+  @RequirePermission('create_request')
+  submit(@Param('id') requestId: string, @Req() req: any) {
+    const userId = (req as AuthRequest).user?.id;
+    if (!userId) throw new UnauthorizedException();
+    return this.purchaseRequestsService.submit(requestId, userId);
+  }
+
 }

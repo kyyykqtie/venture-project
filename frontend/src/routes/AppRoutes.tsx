@@ -7,7 +7,6 @@ import {
   CanvassSheetPage,
   CreateRequestPage,
   GeneratedPurchaseOrderPage,
-  ProcurementDashboardPage,
   PurchaseOrderPage,
   ReceivingPage,
   RequestCompletedPage,
@@ -37,13 +36,14 @@ export function AppRoutes() {
         <Route path="/create-request" element={<Navigate to="/requests/new" replace />} />
         <Route path="/procurement" element={<Navigate to="/procurement/requests" replace />} />
 
-        <Route path="/procurement/requests" element={<ProcurementDashboardPage />} />
+
 
         <Route path="/requests">
           <Route index element={<Navigate to="my" replace />} />
           <Route path="my" element={<MyRequest />} />
           {/* All requests — requires view_all_records */}
-          <Route element={<ProtectedRoute requiredPermission="view_all_records" />}>
+          {/* Requests — any approver of either stage, or full visibility */}
+          <Route element={<ProtectedRoute requiredPermission={["view_all_records", "approve_request_initial", "approve_request_final"]} />}>
             <Route path="all" element={<Allrequest />} />
           </Route>
           {/* Create request — requires create_request */}

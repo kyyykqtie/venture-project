@@ -4,7 +4,7 @@ export { CanvassReviewPage } from "./CanvassReviewPage"
 export { CanvassSheetPage } from "./CanvassSheetPage"
 export { CreateRequestPage } from "./CreateRequestPage"
 export { GeneratedPurchaseOrderPage } from "./GeneratedPurchaseOrderPage"
-export { ProcurementDashboardPage } from "./ProcurementDashboardPage"
+
 export { MyRequestsPage } from "./MyRequestsPage"
 export { PurchaseOrderPage } from "./PurchaseOrderPage"
 export { ReceivingPage } from "./ReceivingPage"

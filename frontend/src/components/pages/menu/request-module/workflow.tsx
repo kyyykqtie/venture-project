@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -9,25 +9,26 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import { DepartmentBadge, type DepartmentName } from "@/components/ui/Badges"
-import { Badge } from "@/components/ui/badge"
+import { type DepartmentName, DepartmentBadge } from "@/components/ui/Badges"
+import { Badge, badgeVariants } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import {
   ArrowRight,
   CheckCircle2,
-  Clock3,
-  FileCheck2,
   Filter,
-  Lock,
+  OctagonAlert,
   Search,
-  Users,
 } from "lucide-react"
 import { Link } from "react-router-dom"
+import type { VariantProps } from "class-variance-authority"
+
 
 export type WorkflowStage =
   | "draft"
-  | "approval"
+  | "pending-initial-approval"
+  | "pending-final-approval"
+  | "approved"
+  | "declined"
   | "purchase-order"
   | "canvass"
   | "canvass-review"
@@ -35,9 +36,10 @@ export type WorkflowStage =
   | "receiving"
   | "completed"
 
+
 export type RequestStatus =
   | "Draft"
-  | "Returned"
+  | "Returned for Revision"
   | "Awaiting Approval"
   | "Approved"
   | "PO Generated"
@@ -47,7 +49,6 @@ export type RequestStatus =
   | "Receiving"
   | "Completed"
 
-export type ProcurementStage = "Ready for Canvass" | "Canvassing" | "PO Generated" | "Received"
 
 export type RequestPdfLineItem = {
   description: string
@@ -88,6 +89,15 @@ export type RequestPdfSource = {
   lineItems: RequestPdfLineItem[]
 }
 
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
 export type RequestFormData = RequestPdfSource
 
 export type RequestRecord = RequestPdfSource & Partial<ApprovalInfo> & {
@@ -113,16 +123,6 @@ export type RequestRecord = RequestPdfSource & Partial<ApprovalInfo> & {
   }
 }
 
-export type ProcurementRequestCard = {
-  id: string
-  title: string
-  department: DepartmentName
-  number: string
-  amount: string
-  age: string
-  status: ProcurementStage
-  stage: ProcurementStage
-}
 
 type StageDefinition = {
   key: WorkflowStage
@@ -130,150 +130,78 @@ type StageDefinition = {
   helper: string
 }
 
+
+
+
+// Raw shape returned by GET /purchase-requests/:id
+export type ApiPurchaseRequestDetail = {
+  id: string
+  requestNumber: string
+  title: string
+  departmentId: string
+  departmentName: string | null
+  requestedByUserId: string
+  requestedByName?: string | null
+  requestedByEmail?: string | null
+  budget: string
+  requestDate: string
+  dateNeeded: string | null
+  status: string
+  draft: {
+    initialApproval?: { decision: string; remarks: string | null; approverId: string; approverName?: string | null; decidedAt: string }
+    finalApproval?: { decision: string; remarks: string | null; approverId: string; approverName?: string | null; decidedAt: string }
+    [key: string]: unknown
+  } | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Raw shape returned by GET /purchase-requests and /purchase-requests/mine
+type ApiPurchaseRequest = {
+  id: string
+  requestNumber: string
+  title: string
+  departmentName: string | null
+  departmentId: string
+  requestedByUserId: string
+  budget: string
+  requestDate: string
+  dateNeeded: string | null
+  status: string
+  updatedAt: string
+}
+
+export type WorkflowStageInfo = {
+  stage: WorkflowStage
+  declinedAt?: WorkflowStage
+}
+
+export function mapApiStatusToStageInfo(record: ApiPurchaseRequestDetail): WorkflowStageInfo {
+  if (record.status !== "declined") {
+    return { stage: mapApiStatusToStage(record.status) }
+  }
+
+  if (record.draft?.finalApproval?.decision === "decline") {
+    return { stage: "declined", declinedAt: "pending-final-approval" }
+  }
+  if (record.draft?.initialApproval?.decision === "decline") {
+    return { stage: "declined", declinedAt: "pending-initial-approval" }
+  }
+  return { stage: "declined" }
+}
+
+
 const workflowStages: StageDefinition[] = [
-  { key: "draft", label: "Request", helper: "Create and submit the request." },
-  { key: "approval", label: "Approval", helper: "Review, approve, or return." },
+  { key: "draft", label: "Awaiting Initial Review", helper: "Create and submit the request." },
+  { key: "pending-initial-approval", label: "Pending Initial Approval", helper: "Awaiting the initial approver's decision." },
+  { key: "pending-final-approval", label: "Pending Final Approval", helper: "Awaiting the final approver's decision." },
+  { key: "approved", label: "Approved", helper: "Cleared for the next operational stage." },
   { key: "purchase-order", label: "PO", helper: "Generate the purchase order." },
   { key: "canvass", label: "Canvass", helper: "Capture supplier quotations." },
   { key: "canvass-review", label: "Review", helper: "Compare quotations and justify selection." },
   { key: "purchase", label: "Purchase", helper: "Confirm the chosen supplier." },
   { key: "receiving", label: "Receiving", helper: "Log delivered items and variances." },
   { key: "completed", label: "Completed", helper: "Archive the request with audit history." },
-]
-
-export const requestRecords: RequestRecord[] = [
-  {
-    id: "MR-2026-014",
-    title: "Office furniture and workstation materials",
-    department: "Operations",
-    budget: "PHP 184,500",
-    site: "Greenland Newtown Executive Village",
-    requester: "Ana Rivera",
-    approver: "Engr. J. Santos",
-    requestDate: "2026-07-10",
-    dateNeeded: "2026-07-18",
-    submittedBy: "Ana Rivera",
-    submittedDate: "July 10, 2026",
-    approvedDate: "July 11, 2026",
-    receiverName: "Maria Santos",
-    receivedDate: "",
-    shippingTerms: "Net 30",
-    shippingMethod: "Supplier Delivery",
-    deliveryDate: "July 18, 2026",
-    remarks: "Deliver in batches if stock is not immediately available.",
-    address: "No. 28 Texas St. Greenland Newtown Executive Village, Ph2, Brgy Banaba, San Mateo, Rizal",
-    phone: "02-8523-6925",
-    dueDate: "Jul 18, 2026",
-    amount: "PHP 184,500",
-    items: 8,
-    status: "Completed",
-    stage: "completed",
-    canvassUnlocked: true,
-    supplierCount: 3,
-    updatedAt: "Completed today",
-    lineItems: [
-      {
-        description: "Office chair",
-        quantity: 12,
-        unit: "pcs",
-        unitPrice: "PHP 4,000",
-        specification: "Ergonomic mesh chair with lumbar support",
-        estimatedCost: "PHP 48,000",
-      },
-      {
-        description: "Filing cabinet",
-        quantity: 4,
-        unit: "pcs",
-        unitPrice: "PHP 8,000",
-        specification: "4-drawer steel cabinet, lockable",
-        estimatedCost: "PHP 32,000",
-      },
-      {
-        description: "Long desk",
-        quantity: 6,
-        unit: "sets",
-        unitPrice: "PHP 17,416.67",
-        specification: "Modular workstation desk with cable tray",
-        estimatedCost: "PHP 104,500",
-      },
-    ],
-    attachments: ["Site photos.pdf", "BOQ draft.xlsx", "Revision notes.docx"],
-    purchaseOrder: {
-      poNumber: "PO-2026-014",
-      vendor: "Adnem Office Supply Co.",
-      preparedBy: "Purchasing Team",
-      approvedBy: "Maria Dela Cruz",
-      deliveryDate: "Jul 24, 2026",
-      terms: "Net 30",
-      status: "Generated",
-    },
-  },
-  {
-    id: "PO-2026-014",
-    title: "Concrete and rebar procurement",
-    department: "Finance",
-    budget: "PHP 428,900",
-    site: "Project North",
-    requester: "Joan Ramos",
-    approver: "Luis Reyes",
-    requestDate: "2026-07-10",
-    dateNeeded: "2026-07-12",
-    submittedBy: "Joan Ramos",
-    submittedDate: "July 10, 2026",
-    approvedDate: "July 10, 2026",
-    receiverName: "Procurement Team",
-    receivedDate: "",
-    shippingTerms: "Net 15",
-    shippingMethod: "Pickup",
-    deliveryDate: "July 12, 2026",
-    remarks: "Coordinate delivery schedule with the project engineer.",
-    address: "Project North storage yard",
-    phone: "",
-    dueDate: "Jul 12, 2026",
-    amount: "PHP 428,900",
-    items: 16,
-    status: "Canvassing",
-    stage: "canvass",
-    canvassUnlocked: true,
-    supplierCount: 3,
-    updatedAt: "Just now",
-    lineItems: [
-      {
-        description: "Concrete 40kg",
-        quantity: 120,
-        unit: "bags",
-        unitPrice: "PHP 260",
-        specification: "High-strength mix for foundation works",
-        estimatedCost: "PHP 31,200",
-      },
-      {
-        description: "Rebar 16mm",
-        quantity: 180,
-        unit: "pcs",
-        unitPrice: "PHP 1,315",
-        specification: "Deformed bar, 12m length",
-        estimatedCost: "PHP 236,700",
-      },
-      {
-        description: "Tie wire",
-        quantity: 24,
-        unit: "kgs",
-        unitPrice: "PHP 400",
-        specification: "Galvanized tie wire roll",
-        estimatedCost: "PHP 9,600",
-      },
-    ],
-    attachments: ["Canvass summary.pdf", "Supplier quotations.pdf", "Approval memo.docx"],
-    purchaseOrder: {
-      poNumber: "PO-2026-014",
-      vendor: "Northern Construction Supply",
-      preparedBy: "Purchasing Team",
-      approvedBy: "Luis Reyes",
-      deliveryDate: "Jul 16, 2026",
-      terms: "Net 30",
-      status: "Generated",
-    },
-  },
 ]
 
 const quotationRows = [
@@ -303,70 +231,137 @@ export const canvassSupplierRows = [
   },
 ]
 
-export const procurementRequests: ProcurementRequestCard[] = [
-  {
-    id: "PR-2026-004",
-    title: "IT Equipment Request",
-    department: "Operations",
-    number: "REQ-0004",
-    amount: "₱150,000",
-    age: "3 days old",
-    status: "Ready for Canvass",
-    stage: "Ready for Canvass",
-  },
-  {
-    id: "PR-2026-005",
-    title: "Office Partition Upgrade",
-    department: "HR",
-    number: "REQ-0005",
-    amount: "₱84,500",
-    age: "1 day old",
-    status: "Canvassing",
-    stage: "Canvassing",
-  },
-  {
-    id: "PR-2026-006",
-    title: "Network Switch Replacement",
-    department: "Finance",
-    number: "REQ-0006",
-    amount: "₱220,000",
-    age: "5 days old",
-    status: "PO Generated",
-    stage: "PO Generated",
-  },
-  {
-    id: "PR-2026-007",
-    title: "Warehouse Delivery Receipt",
-    department: "SalesMarketing",
-    number: "REQ-0007",
-    amount: "₱42,000",
-    age: "7 days old",
-    status: "Received",
-    stage: "Received",
-  },
-]
+function mapApiStatusToStage(status: string): WorkflowStage {
+  switch (status) {
+    case "draft": return "draft"
+    case "submitted":
+    case "pending_initial_approval": return "pending-initial-approval"
+    case "pending_final_approval": return "pending-final-approval"
+    case "approved": return "approved"
+    case "declined": return "declined"
+    default: return "draft"
+  }
+}
 
-export function getRequest(requestId?: string) {
+
+function formatDateDisplay(isoDate: string): string {
+  const date = new Date(isoDate)
+  if (Number.isNaN(date.getTime())) return isoDate
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+}
+
+
+function mapApiStatusToLabel(status: string): RequestStatus {
+  switch (status) {
+    case "draft": return "Draft"
+    case "submitted":
+    case "pending_initial_approval":
+    case "pending_final_approval": return "Awaiting Approval"
+    case "approved": return "Approved"
+    case "declined": return "Returned for Revision"
+    default: return "Draft"
+  }
+}
+
+
+
+
+// Shared hook — every page that used to call getRequest(requestId) synchronously
+// now uses this instead.
+// Real backend-backed request fetch — use this in RequestDetailPage and
+// ApprovalReviewPage going forward. Other pages still use getRequest() (mock)
+// until their backend models exist.
+export function useRequest(requestId?: string) {
+  const [request, setRequest] = useState<ApiPurchaseRequestDetail | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!requestId) {
+      setIsLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
+
+    fetch(`${import.meta.env.VITE_API_URL}/purchase-requests/${requestId}`, { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(res.status === 404 ? "Request not found" : "Failed to load request")
+        return res.json() as Promise<ApiPurchaseRequestDetail>
+      })
+      .then((data) => { if (!cancelled) setRequest(data) })
+      .catch((err) => { if (!cancelled) setError(err.message) })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+
+    return () => { cancelled = true }
+  }, [requestId])
+
+  return { request, isLoading, error }
+}
+
+
+export function formatStageLabel(stage: WorkflowStage) {
+  if (stage === "declined") return "Declined"
+  return workflowStages.find((item) => item.key === stage)?.label ?? "Request"
+}
+
+
+
+export function getRequest(requestId?: string): RequestRecord {
   const storedDraft = loadRequestDraft()
-
   if (requestId && storedDraft?.id === requestId) {
     return mapDraftToRequestRecord(storedDraft)
   }
 
-  return requestRecords.find((record) => record.id === requestId) ?? requestRecords[0]
+  return mapDraftToRequestRecord({
+    id: requestId ?? "PLACEHOLDER",
+    title: "Placeholder Request",
+    department: "Operations",
+    budget: "0",
+    requestDate: new Date().toISOString(),
+    dateNeeded: "",
+    submittedBy: "Unknown",
+    submittedDate: new Date().toISOString(),
+    shippingTerms: "",
+    shippingMethod: "",
+    deliveryDate: "",
+    remarks: "",
+    address: "",
+    phone: "",
+    lineItems: [],
+  })
 }
 
-export function formatStageLabel(stage: WorkflowStage) {
-  return workflowStages.find((item) => item.key === stage)?.label ?? "Request"
+type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>
+
+export function statusTone(status: RequestStatus): BadgeVariant {
+  switch (status) {
+    case "Draft":
+      return "muted"
+    case "Awaiting Approval":
+      return "warning"
+    // case "Return For Revision":
+    //   return "destructive"
+    case "Approved":
+      return "success"
+    case "PO Generated":
+    case "Canvassing":
+    case "For Comparison":
+      return "info"
+    case "Purchased":
+    case "Receiving":
+      return "secondary"
+    case "Completed":
+      return "default"
+    default:
+      return "outline"
+  }
 }
 
-export function statusTone(status: RequestStatus) {
-  if (status === "Completed") return "default"
-  if (status === "Approved" || status === "PO Generated" || status === "Purchased") return "secondary"
-  if (status === "Awaiting Approval" || status === "Canvassing" || status === "For Comparison" || status === "Receiving") return "outline"
-  if (status === "Returned") return "destructive"
-  return "outline"
-}
+
+
 
 function parseCurrencyValue(value: string) {
   const numeric = Number(value.replace(/[^\d.-]/g, ""))
@@ -427,7 +422,7 @@ export function mapDraftToRequestRecord(draft: RequestFormData): RequestRecord {
     stage: "draft",
     canvassUnlocked: false,
     supplierCount: 0,
-    updatedAt: "Just now",
+    updatedAt: "",
     attachments: [],
     purchaseOrder: {
       poNumber: draft.id,
@@ -478,40 +473,61 @@ export function SummaryStat({ label, value, hint }: { label: string; value: stri
   )
 }
 
-export function WorkflowProgressTracker({ stage }: { stage: WorkflowStage }) {
-  const activeIndex = workflowIndex(stage)
- 
+export function WorkflowProgressTracker({
+  stage,
+  declinedAt,
+}: {
+  stage: WorkflowStage
+  declinedAt?: WorkflowStage
+}) {
+  const isDeclined = stage === "declined"
+  const isTerminalApproved = stage === "approved"
+  const activeIndex = isDeclined ? workflowIndex(declinedAt ?? "draft") : workflowIndex(stage)
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/25 p-5 shadow-sm">
-     
-
       <div className="relative">
         <div className="absolute left-6 right-6 top-4 h-[2px] rounded-full bg-gradient-to-r from-emerald-200 via-border/80 to-border/60" aria-hidden="true" />
         <div className="relative flex items-start justify-between gap-2 overflow-x-auto pb-1">
           {workflowStages.map((item, index) => {
-            const isDone = index < activeIndex
-            const isActive = index === activeIndex
-            const isUpcoming = !isDone && !isActive
-
+            const isFrozenLast = isDeclined && index === activeIndex
+            const isDone = isDeclined
+              ? index < activeIndex
+              : isTerminalApproved
+                ? index <= activeIndex   // ← "approved" itself now counts as done/green
+                : index < activeIndex
+            const isActive = !isDeclined && !isTerminalApproved && index === activeIndex   // ← no pulsing blue once approved
+            const isUpcoming = !isDone && !isActive && !isFrozenLast
             return (
               <div key={item.key} className="relative z-10 flex min-w-[96px] flex-1 flex-col items-center text-center">
                 <div
                   className={cn(
                     "relative mb-2 flex size-10 items-center justify-center rounded-full border shadow-sm transition-all duration-200",
-                    isDone
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                      : isActive
-                        ? "border-primary bg-primary text-primary-foreground shadow-md"
-                        : "border-border bg-background text-muted-foreground"
+                    isFrozenLast
+                      ? "border-destructive bg-destructive/10 text-destructive"
+                      : isDone
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                        : isActive
+                          ? "border-primary bg-primary text-primary-foreground shadow-md"
+                          : "border-border bg-background text-muted-foreground"
                   )}
                 >
-                  {isDone ? <CheckCircle2 className="size-4" /> : <span className="text-[11px] font-semibold">{index + 1}</span>}
+                  {isFrozenLast ? (
+                    <OctagonAlert className="size-4" />
+                  ) : isDone ? (
+                    <CheckCircle2 className="size-4" />
+                  ) : (
+                    <span className="text-[11px] font-semibold">{index + 1}</span>
+                  )}
                   {isActive ? <span className="absolute inset-0 rounded-full ring-4 ring-primary/20" /> : null}
                 </div>
                 <div className="space-y-0.5">
-                  <p className={cn("text-sm font-semibold", isActive ? "text-foreground" : isDone ? "text-emerald-700" : "text-muted-foreground")}>{item.label}</p>
-                  <p className={cn("text-[11px] leading-4", isActive ? "text-primary/80" : isDone ? "text-emerald-600" : "text-muted-foreground/80")}>{item.helper}</p>
+                  <p className={cn("text-sm font-semibold", isActive || isFrozenLast ? "text-foreground" : isDone ? "text-emerald-700" : "text-muted-foreground")}>
+                    {item.label}
+                  </p>
+                  <p className={cn("text-[11px] leading-4", isActive ? "text-primary/80" : isFrozenLast ? "text-destructive/80" : isDone ? "text-emerald-600" : "text-muted-foreground/80")}>
+                    {item.helper}
+                  </p>
                 </div>
                 {isUpcoming ? <span className="mt-2 h-1.5 w-10 rounded-full bg-border/70" /> : null}
               </div>
@@ -519,10 +535,18 @@ export function WorkflowProgressTracker({ stage }: { stage: WorkflowStage }) {
           })}
         </div>
       </div>
+
+      {isDeclined ? (
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <OctagonAlert className="size-4" />
+          <span>
+            This request was declined at the "{workflowStages.find((s) => s.key === (declinedAt ?? "draft"))?.label}" stage and did not proceed further.
+          </span>
+        </div>
+      ) : null}
     </div>
   )
 }
-
 export function RequestPdfPreview({ request }: { request: RequestDetail }) {
   const subtotal = request.lineItems.reduce((total, item) => total + parseCurrencyValue(item.estimatedCost), 0)
 
@@ -697,15 +721,38 @@ export function RequestPdfPreview({ request }: { request: RequestDetail }) {
 }
 
 export function QueuePage({ scope }: { scope: "my" | "all" }) {
-  const records = scope === "my" ? requestRecords.slice(0, 1) : requestRecords
+  const [records, setRecords] = useState<ApiPurchaseRequest[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+
+  useEffect(() => {
+    let cancelled = false
+    const path = scope === "my" ? "/purchase-requests/mine" : "/purchase-requests"
+
+    setIsLoading(true)
+    setError(null)
+
+    fetch(`${import.meta.env.VITE_API_URL}${path}`, { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to load requests")
+        return res.json() as Promise<ApiPurchaseRequest[]>
+      })
+      .then((data) => { if (!cancelled) setRecords(data) })
+      .catch((err) => { if (!cancelled) setError(err.message) })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+
+    return () => { cancelled = true }
+  }, [scope])
+
 
   return (
     <ModulePageShell
-      title={scope === "my" ? "My Requests" : "All Requests"}
+      title={scope === "my" ? "My Requests" : "Requests"}   // was: "All Requests"
       description={
         scope === "my"
           ? "Track drafts, returned items, and requests waiting for the next action."
-          : "Monitor every request in the module and jump directly into the workflow."
+          : "Requests currently relevant to your role in the workflow."   // unchanged — this text is already accurate to the real behavior
       }
       action={
         scope === "my" ? (
@@ -722,12 +769,7 @@ export function QueuePage({ scope }: { scope: "my" | "all" }) {
         )
       }
     >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryStat label="Open" value="12" hint="Requests needing action" />
-        <SummaryStat label="Returned" value="3" hint="Needs revision and resubmission" />
-        <SummaryStat label="In Purchasing" value="5" hint="Approved requests in later stages" />
-        <SummaryStat label="Completed" value="28" hint="Closed requests for audit reference" />
-      </div>
+
 
       <Card>
         <CardHeader className="border-b border-border/60 pb-3">
@@ -749,51 +791,69 @@ export function QueuePage({ scope }: { scope: "my" | "all" }) {
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-border/60 bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 font-medium md:px-5">Request</th>
-                <th className="px-4 py-3 font-medium md:px-5">Department</th>
-                <th className="px-4 py-3 font-medium md:px-5">Current Stage</th>
-                <th className="px-4 py-3 font-medium md:px-5">Amount</th>
-                <th className="px-4 py-3 font-medium md:px-5">Updated</th>
-                <th className="px-4 py-3 font-medium md:px-5">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((record) => (
-                <tr key={record.id} className="border-b border-border/60 last:border-0">
-                  <td className="px-4 py-4 md:px-5">
-                    <div className="space-y-1">
-                      <p className="font-medium text-foreground">{record.id}</p>
-                      <p className="text-sm text-muted-foreground">{record.title}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 md:px-5">
-                    <DepartmentBadge department={record.department} />
-                  </td>
-                  <td className="px-4 py-4 md:px-5">
-                    <Badge variant={statusTone(record.status)}>{formatStageLabel(record.stage)}</Badge>
-                  </td>
-                  <td className="px-4 py-4 text-muted-foreground md:px-5">{record.amount}</td>
-                  <td className="px-4 py-4 text-muted-foreground md:px-5">{record.updatedAt}</td>
-                  <td className="px-4 py-4 md:px-5">
-                    <Button asChild variant="outline" size="sm">
-                      <Link to={`/requests/${record.id}`}>Open</Link>
-                    </Button>
-                  </td>
+          {isLoading ? (
+            <div className="p-6 text-sm text-muted-foreground">Loading requests…</div>
+          ) : error ? (
+            <div className="p-6 text-sm text-destructive">{error}</div>
+          ) : records.length === 0 ? (
+            <div className="p-6 text-sm text-muted-foreground">No requests to show.</div>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border/60 bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 font-medium md:px-5">Request</th>
+                  <th className="px-4 py-3 font-medium md:px-5">Department</th>
+                  <th className="px-4 py-3 font-medium md:px-5">Status</th>
+                  <th className="px-4 py-3 font-medium md:px-5">Amount</th>
+                  <th className="px-4 py-3 font-medium md:px-5">Updated</th>
+                  <th className="px-4 py-3 font-medium md:px-5">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {records.map((record) => (
+                  <tr key={record.id} className="border-b border-border/60 last:border-0">
+                    <td className="px-4 py-4 md:px-5">
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">{record.requestNumber}</p>
+                        <p className="text-sm text-muted-foreground">{record.title}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 md:px-5">
+                      {record.departmentName ? (
+                        <DepartmentBadge department={record.departmentName as DepartmentName} />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 md:px-5">
+                      <Badge variant={statusTone(mapApiStatusToLabel(record.status))}>
+                        {formatStageLabel(mapApiStatusToStage(record.status))}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-4 text-muted-foreground md:px-5">{formatCurrency(parseCurrencyValue(record.budget))}</td>
+                    <td className="px-4 py-4 text-muted-foreground md:px-5">{formatDateDisplay(record.updatedAt)}</td>
+                    <td className="px-4 py-4 md:px-5">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/requests/${record.id}`}>View</Link>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </CardContent>
       </Card>
     </ModulePageShell>
   )
 }
 
-export function RequestDetailWorkspace({ request }: { request: RequestRecord }) {
-  const canvassLocked = !request.canvassUnlocked
+export function RequestDetailWorkspace({ request }: { request: ApiPurchaseRequestDetail }) {
+  const initialDecision = request.draft?.initialApproval
+  const finalDecision = request.draft?.finalApproval
+  const requesterName = request.requestedByName ?? request.requestedByUserId ?? "Unknown requester"
+  const initialApproverName = initialDecision?.approverName ?? initialDecision?.approverId ?? "Pending approver"
+  const finalApproverName = finalDecision?.approverName ?? finalDecision?.approverId ?? "Pending approver"
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.85fr)]">
@@ -801,100 +861,71 @@ export function RequestDetailWorkspace({ request }: { request: RequestRecord }) 
         <Card>
           <CardHeader className="border-b border-border/60 pb-3">
             <CardTitle>Request Overview</CardTitle>
-            <CardDescription>Keep the request, supporting documents, and approval context in one place.</CardDescription>
+            <CardDescription>Core details for this request.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-4">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryStat label="Requested By" value={request.submittedBy} hint={request.submittedDate} />
-              <SummaryStat label="Approved By" value={request.approver ?? "Pending"} hint={request.approvedDate || "Pending approval"} />
-              <SummaryStat label="Received By" value={request.receiverName || "Pending"} hint={request.receivedDate || "Not yet received"} />
-              <SummaryStat label="Delivery Date" value={request.deliveryDate} hint={request.shippingMethod} />
+              <SummaryStat
+                label="Requested By"
+                value={requesterName}
+                hint={formatDateDisplay(request.createdAt)}
+              />
+              <SummaryStat
+                label="Approved By"
+                value={finalDecision?.decision === "approve" ? finalApproverName : "Pending"}
+                hint={finalDecision?.decidedAt ? formatDateDisplay(finalDecision.decidedAt) : "Awaiting final approval"}
+              />
+              <SummaryStat
+                label="Received By"
+                value="Not yet available"
+                hint="Receiving stage isn't implemented yet"
+              />
+              <SummaryStat
+                label="Delivery Date"
+                value="Not yet available"
+                hint="Purchase order stage isn't implemented yet"
+              />
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="border-b border-border/60 pb-3">
-            <CardTitle>Working Area</CardTitle>
-            <CardDescription>Use this section for the active stage, supporting notes, and attached records.</CardDescription>
+            <CardTitle>Approval History</CardTitle>
+            <CardDescription>Decisions recorded at each approval stage.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 p-4">
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
-              <div>
-                <p className="text-sm font-medium">Materials / Services</p>
-                <p className="text-sm text-muted-foreground">Line items stay visible while the request moves through approval.</p>
+          <CardContent className="space-y-3 p-4 text-sm">
+            {initialDecision ? (
+              <div className="rounded-xl border border-border/60 p-3">
+                <p className="font-medium text-foreground">
+                  Initial Approval — {initialDecision.decision === "approve" ? "Approved" : "Declined"}
+                </p>
+                <p className="text-xs text-muted-foreground">{formatDateDisplay(initialDecision.decidedAt)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Reviewed by {initialApproverName}</p>
+                {initialDecision.remarks ? <p className="mt-1 text-muted-foreground">{initialDecision.remarks}</p> : null}
               </div>
-              <Separator className="my-3" />
-              <div className="space-y-2 text-sm">
-                {request.lineItems.map((item) => (
-                  <div key={item.description} className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-medium text-foreground">{item.description}</p>
-                      {item.specification ? <p className="text-xs text-muted-foreground">{item.specification}</p> : null}
-                    </div>
-                    <span className="text-muted-foreground">{item.quantity} {item.unit}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-                BACKEND TODO: connect this request snapshot to the request_items table and render the live record from the request detail API.
-              </div>
-            </div>
+            ) : (
+              <p className="text-muted-foreground">Awaiting initial approval.</p>
+            )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-border/60 p-4">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Clock3 className="size-4" />
-                  Approval Timeline
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">Capture every decision and return with a visible audit trail.</p>
+            {finalDecision ? (
+              <div className="rounded-xl border border-border/60 p-3">
+                <p className="font-medium text-foreground">
+                  Final Approval — {finalDecision.decision === "approve" ? "Approved" : "Declined"}
+                </p>
+                <p className="text-xs text-muted-foreground">{formatDateDisplay(finalDecision.decidedAt)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Reviewed by {finalApproverName}</p>
+                {finalDecision.remarks ? <p className="mt-1 text-muted-foreground">{finalDecision.remarks}</p> : null}
               </div>
-              <div className="rounded-xl border border-border/60 p-4">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Users className="size-4" />
-                  Stakeholders
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">Requester, approver, and purchasing share the same record.</p>
-              </div>
-            </div>
+            ) : (
+              <p className="text-muted-foreground">Awaiting final approval.</p>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="border-b border-border/60 pb-3">
-            <CardTitle>Canvass Sheet Access</CardTitle>
-            <CardDescription>Hidden until the purchase order is generated and approved.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className={`rounded-xl border p-4 ${canvassLocked ? "border-dashed border-border bg-muted/20" : "border-border bg-card"}`}>
-              {canvassLocked ? (
-                <div className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <Lock className="mt-0.5 size-4" />
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Canvass sheet is locked</p>
-                    <p>
-                      This stage becomes available only after the purchase order is generated. The UI should keep it visible
-                      as a future step, but inaccessible until prerequisites are satisfied.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <FileCheck2 className="size-4" />
-                    Supplier comparison is available
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Compare quotations side by side, highlight the lowest amount, and allow justified overrides.
-                  </p>
-                  <Button asChild size="sm">
-                    <Link to={`/requests/${request.id}/canvass/review`}>Open comparison view</Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+          Line items are not yet stored as structured data on the backend — this section will show the itemized request once that's added to the schema.
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -905,54 +936,21 @@ export function RequestDetailWorkspace({ request }: { request: RequestRecord }) 
           </CardHeader>
           <CardContent className="space-y-3 p-4 text-sm">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Request ID</span>
-              <span className="font-medium">{request.id}</span>
+              <span className="text-muted-foreground">Request Number</span>
+              <span className="font-medium">{request.requestNumber}</span>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Department</span>
-              <DepartmentBadge department={request.department} />
+              {request.departmentName ? (
+                 <DepartmentBadge department={request.departmentName as DepartmentName} />
+              ) : (
+                <span className="text-muted-foreground">No Role</span>
+              )}
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Estimated Total</span>
-              <span className="font-medium">{request.amount}</span>
+              <span className="text-muted-foreground">Requested By</span>
+              <span className="font-medium text-foreground">{requesterName}</span>
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">Suppliers</span>
-              <span className="font-medium">{request.supplierCount}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="border-b border-border/60 pb-3">
-            <CardTitle>Next Actions</CardTitle>
-            <CardDescription>Jump into the next workflow stage from here.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 p-4">
-            <Button asChild className="w-full justify-between" variant="outline" size="sm">
-              <Link to={`/requests/${request.id}/approval`}>
-                Review Approval
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild className="w-full justify-between" variant="outline" size="sm">
-              <Link to={`/requests/${request.id}/purchase-order`}>
-                Purchase Order
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild className="w-full justify-between" variant="outline" size="sm">
-              <Link to={`/requests/${request.id}/canvass`}>
-                Canvass Sheet
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild className="w-full justify-between" variant="outline" size="sm">
-              <Link to={`/requests/${request.id}/receiving`}>
-                Receiving
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
           </CardContent>
         </Card>
       </div>

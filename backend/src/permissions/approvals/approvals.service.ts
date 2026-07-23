@@ -3,13 +3,20 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, inArray, or } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../auth/schema';
-import { purchaseRequest } from '../../auth/schema';
+import { department, purchaseRequest, user } from '../../auth/schema';
 import { DATABASE_CONNECTION } from '../../database/database.connection';
 import { ApprovalActionDto, ApprovalDecision } from './approve.dto';
+
+// CHANGED: new dependency — resolves a caller's permissions for queue filtering and access checks
+import { PermissionService } from '../../role/permission.service';
+
+
+
 
 // Status values that live on purchaseRequest.status
 const STATUS = {
@@ -25,9 +32,12 @@ export class ApprovalsService {
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: NodePgDatabase<typeof schema>,
-  ) {}
+    private readonly permissionService: PermissionService,
 
-  // ── Initial approval ───────────────────────────────────────────────────────
+  ) { }
+
+  // ── Initial approval ─────────────────────────────────────────────────────
+  // UNCHANGED from original implementation.
   // Required permission: approve_request_initial
   // Allowed from status:  submitted | pending_initial_approval
   // Transitions to:       pending_final_approval  (approve)
@@ -59,6 +69,9 @@ export class ApprovalsService {
         ? STATUS.pendingFinal
         : STATUS.declined;
 
+
+
+
     const [updated] = await this.db
       .update(purchaseRequest)
       .set({
@@ -68,6 +81,7 @@ export class ApprovalsService {
             decision: dto.decision,
             remarks: dto.remarks ?? null,
             approverId,
+          
             decidedAt: new Date().toISOString(),
           },
         }),
@@ -126,6 +140,127 @@ export class ApprovalsService {
     return updated;
   }
 
+
+  // ── Queue: role-scoped visibility ──────────────────────────────────────────
+  // Approvers see only the stage they act on. Anyone without an approval
+  // permission falls back to seeing their own submitted requests only.
+  async findQueueForUser(userId: string) {
+    const permissions = await this.permissionService.resolvePermissions(userId);
+
+    const baseQuery = () =>
+      this.db
+        .select({
+          id: purchaseRequest.id,
+          requestNumber: purchaseRequest.requestNumber,
+          title: purchaseRequest.title,
+          departmentId: purchaseRequest.departmentId,
+          departmentName: department.name,
+          requestedByUserId: purchaseRequest.requestedByUserId,
+          budget: purchaseRequest.budget,
+          requestDate: purchaseRequest.requestDate,
+          dateNeeded: purchaseRequest.dateNeeded,
+          status: purchaseRequest.status,
+          updatedAt: purchaseRequest.updatedAt,
+        })
+        .from(purchaseRequest)
+        .leftJoin(department, eq(purchaseRequest.departmentId, department.id));
+
+
+    if (permissions.has('view_all_records')) {
+      return baseQuery();
+    }
+
+    const statuses: string[] = [];
+    if (permissions.has('approve_request_initial')) {
+      statuses.push(STATUS.submitted, STATUS.pendingInitial);
+    }
+    if (permissions.has('approve_request_final')) {
+      statuses.push(STATUS.pendingFinal);
+    }
+
+    if (statuses.length > 0) {
+      return baseQuery().where(inArray(purchaseRequest.status, statuses));
+    }
+
+    // Plain requestor: only what they created themselves
+    return baseQuery().where(eq(purchaseRequest.requestedByUserId, userId));
+  }
+
+  // ── "My Requests": always the caller's own, regardless of role ─────────────
+  async findMine(userId: string) {
+    return this.db
+      .select({
+        id: purchaseRequest.id,
+        requestNumber: purchaseRequest.requestNumber,
+        title: purchaseRequest.title,
+        departmentId: purchaseRequest.departmentId,
+        departmentName: department.name,
+        requestedByUserId: purchaseRequest.requestedByUserId,
+        budget: purchaseRequest.budget,
+        requestDate: purchaseRequest.requestDate,
+        dateNeeded: purchaseRequest.dateNeeded,
+        status: purchaseRequest.status,
+        updatedAt: purchaseRequest.updatedAt,
+      })
+      .from(purchaseRequest)
+      .leftJoin(department, eq(purchaseRequest.departmentId, department.id))
+      .where(eq(purchaseRequest.requestedByUserId, userId));
+  }
+
+
+
+  // ── Single request detail (includes full draft blob for approval history) ──
+
+  async findOne(requestId: string, userId: string) {
+    const [request] = await this.db
+      .select({
+        id: purchaseRequest.id,
+        requestNumber: purchaseRequest.requestNumber,
+        title: purchaseRequest.title,
+        departmentId: purchaseRequest.departmentId,
+        departmentName: department.name,
+        requestedByUserId: purchaseRequest.requestedByUserId,
+        requestedByName: user.name,
+        requestedByEmail: user.email,
+        budget: purchaseRequest.budget,
+        requestDate: purchaseRequest.requestDate,
+        dateNeeded: purchaseRequest.dateNeeded,
+        status: purchaseRequest.status,
+        draft: purchaseRequest.draft,
+        createdAt: purchaseRequest.createdAt,
+        updatedAt: purchaseRequest.updatedAt,
+      })
+      .from(purchaseRequest)
+      .leftJoin(department, eq(purchaseRequest.departmentId, department.id))
+      .leftJoin(user, eq(purchaseRequest.requestedByUserId, user.id))
+      .where(
+        or(
+          eq(purchaseRequest.id, requestId),
+          eq(purchaseRequest.requestNumber, requestId),
+        ),
+      );
+
+    if (!request) throw new NotFoundException('Purchase request not found.');
+
+    const permissions = await this.permissionService.resolvePermissions(userId);
+    const isOwner = request.requestedByUserId === userId;
+    const isApprover =
+      permissions.has('approve_request_initial') || permissions.has('approve_request_final');
+    const canViewAll = permissions.has('view_all_records');
+
+    if (!isOwner && !isApprover && !canViewAll) {
+      throw new UnauthorizedException('You do not have access to this request.');
+    }
+
+    const hydratedDraft = await this.hydrateApprovalMetadata(request.draft);
+
+    return {
+      ...request,
+      draft: hydratedDraft,
+    };
+  }
+
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   private async findOrThrow(requestId: string) {
@@ -152,4 +287,42 @@ export class ApprovalsService {
         : {};
     return { ...base, ...patch };
   }
+
+  private async hydrateApprovalMetadata(existing: unknown) {
+    if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+      return null;
+    }
+
+    const draft = existing as Record<string, unknown>;
+    const approvals = ['initialApproval', 'finalApproval'] as const;
+
+    for (const key of approvals) {
+      const approval = draft[key] as Record<string, unknown> | undefined;
+      const approverId = approval?.approverId;
+
+      if (typeof approverId !== 'string' || !approverId) {
+        continue;
+      }
+
+      const [approver] = await this.db
+        .select({ name: user.name, email: user.email })
+        .from(user)
+        .where(eq(user.id, approverId));
+
+      if (approver) {
+        draft[key] = {
+          ...approval,
+          approverName: approver.name,
+          approverEmail: approver.email,
+        };
+      }
+    }
+
+    return draft;
+  }
+
 }
+
+
+
+

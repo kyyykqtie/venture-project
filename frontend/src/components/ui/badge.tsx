@@ -41,16 +41,19 @@ const badgeVariants = cva(
         staff:
           "bg-zinc-100 text-zinc-950 border-zinc-200 dark:bg-zinc-950/70 dark:text-zinc-100 dark:border-zinc-800 [a]:hover:bg-zinc-100/90",
 
-        // EMPLOYEE ROELS
+        // EMPLOYEE ROLES
+
         HR:
-        "bg-rose-100 text-rose-950 border-rose-200 dark:bg-rose-950/70 dark:text-rose-100 dark:border-rose-800 [a]:hover:bg-rose-100/90",
+          "bg-pink-100 text-pink-900 border-pink-200 dark:bg-pink-950/60 dark:text-pink-100 dark:border-pink-800 [a]:hover:bg-pink-100/90",
+
         Finance:
-        "bg-sky-100 text-sky-950 border-sky-200 dark:bg-sky-950/70 dark:text-sky-100 dark:border-sky-800 [a]:hover:bg-sky-100/90",
+          "bg-emerald-100 text-emerald-900 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-100 dark:border-emerald-800 [a]:hover:bg-emerald-100/90",
+
         SalesMarketing:
-        "bg-amber-100 text-amber-950 border-amber-200 dark:bg-amber-950/70 dark:text-amber-100 dark:border-amber-800 [a]:hover:bg-amber-100/90",
+          "bg-orange-100 text-orange-900 border-orange-200 dark:bg-orange-950/60 dark:text-orange-100 dark:border-orange-800 [a]:hover:bg-orange-100/90",
+
         Operations:
-        "bg-emerald-100 text-emerald-950 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-100 dark:border-emerald-800 [a]:hover:bg-emerald-100/90",
-        
+          "bg-blue-100 text-blue-900 border-blue-200 dark:bg-blue-950/60 dark:text-blue-100 dark:border-blue-800 [a]:hover:bg-blue-100/90",
       },
     },
     defaultVariants: {
