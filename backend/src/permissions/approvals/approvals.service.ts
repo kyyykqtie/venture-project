@@ -14,6 +14,7 @@ import { ApprovalActionDto, ApprovalDecision } from './approve.dto';
 
 // CHANGED: new dependency — resolves a caller's permissions for queue filtering and access checks
 import { PermissionService } from '../../role/permission.service';
+import { getRequestByIdOrNumber } from '../request/request.utils';
 
 
 
@@ -233,24 +234,11 @@ export class ApprovalsService {
       .from(purchaseRequest)
       .leftJoin(department, eq(purchaseRequest.departmentId, department.id))
       .leftJoin(user, eq(purchaseRequest.requestedByUserId, user.id))
-      .where(
-        or(
-          eq(purchaseRequest.id, requestId),
-          eq(purchaseRequest.requestNumber, requestId),
-        ),
-      );
+      .where(getRequestByIdOrNumber(requestId));
 
     if (!request) throw new NotFoundException('Purchase request not found.');
 
-    const permissions = await this.permissionService.resolvePermissions(userId);
-    const isOwner = request.requestedByUserId === userId;
-    const isApprover =
-      permissions.has('approve_request_initial') || permissions.has('approve_request_final');
-    const canViewAll = permissions.has('view_all_records');
-
-    if (!isOwner && !isApprover && !canViewAll) {
-      throw new UnauthorizedException('You do not have access to this request.');
-    }
+    await this.permissionService.checkRequestAccess(userId, request.requestedByUserId);
 
     const hydratedDraft = await this.hydrateApprovalMetadata(request.draft);
 
@@ -267,7 +255,7 @@ export class ApprovalsService {
     const [request] = await this.db
       .select()
       .from(purchaseRequest)
-      .where(eq(purchaseRequest.id, requestId));
+      .where(getRequestByIdOrNumber(requestId));
 
     if (!request) throw new NotFoundException('Purchase request not found.');
     return request;

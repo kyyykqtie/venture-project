@@ -38,7 +38,6 @@ import {
   Home,
   Inbox,
   FilePlus2,
-  ClipboardList,
   Shield,
   Settings,
   Users,
@@ -50,7 +49,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { useAuth, type PermissionName } from "@/context/AuthContext"
 import { useEffect, useState } from "react"
 
-const API_BASE = "http://localhost:3000"
+const API_BASE = import.meta.env.VITE_API_URL
 
 interface NavItem {
   title: string
@@ -274,7 +273,7 @@ export function SidebarDemo() {
               hasPermission={hasPermission}
             />
 
-        
+
             {visibleAdminItems.length > 0 && (
               <SidebarGroup>
                 <SidebarGroupLabel>ADMINISTRATION</SidebarGroupLabel>

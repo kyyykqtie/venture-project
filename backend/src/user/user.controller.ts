@@ -7,9 +7,12 @@ import {
   Put,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { PermissionService } from '../role/permission.service';
 import { RoleService } from '../role/role.service';
+import { PermissionGuard } from '../role/guards/permission.guard';
+import { RequirePermission } from '../role/decorators/require-permission.decorator';
 import type { AuthUser } from './types';
 import { UserService } from './user.service';
 
@@ -19,7 +22,9 @@ interface AuthRequest {
 }
 
 @Controller('users')
+@UseGuards(PermissionGuard)
 export class UserController {
+
   constructor(
     private readonly userService: UserService,
     private readonly permissionService: PermissionService,
@@ -51,9 +56,11 @@ export class UserController {
   }
 
   @Get()
+  @RequirePermission('manage_users')
   findAll() {
     return this.userService.findAllWithDepartments();
   }
+
 
   @Put(':id/role')
   async updateUserRole(

@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,36 @@ import { StageWorkspaceShell, getRequest } from "./workflow"
 export function GeneratedPurchaseOrderPage() {
   const { requestId } = useParams()
   const request = getRequest(requestId)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+
+  const handleDownloadPdf = async () => {
+    setIsDownloading(true)
+    setDownloadError(null)
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/purchase-requests/${requestId}/purchase-order/view`,
+        { credentials: "include" }
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.message ?? "Failed to download PDF")
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `PO-${request.purchaseOrder.poNumber || requestId}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Failed to download PDF")
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   return (
     <StageWorkspaceShell
@@ -17,21 +48,32 @@ export function GeneratedPurchaseOrderPage() {
       description="Review the generated PO before confirming receipt or moving to the next operational step."
       request={request}
       action={
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm">
-            <Printer className="mr-2 size-4" />
-            Print
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 size-4" />
-            Download PDF
-          </Button>
-          <Button asChild size="sm">
-            <Link to={`/requests/${request.id}/receiving`}>Go to Receiving</Link>
-          </Button>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.print()}>
+              <Printer className="mr-2 size-4" />
+              Print
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={isDownloading}
+            >
+              <Download className="mr-2 size-4" />
+              {isDownloading ? "Downloading..." : "Download PDF"}
+            </Button>
+            <Button asChild size="sm">
+              <Link to={`/requests/${request.id}/receiving`}>Go to Receiving</Link>
+            </Button>
+          </div>
+          {downloadError && (
+            <span className="text-xs text-destructive mt-1 font-medium">{downloadError}</span>
+          )}
         </div>
       }
     >
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.85fr)]">
         <Card>
           <CardHeader className="border-b border-border/60 pb-3">

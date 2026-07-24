@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { AuthGuard, AuthModule } from '@thallesp/nestjs-better-auth';
@@ -12,6 +12,8 @@ import { DepartmentModule } from './department/department.module';
 import { PurchaseRequestsModule } from './permissions/request/request-creation.module';
 import { ApprovalsModule } from './permissions/approvals/approvals.module';
 import { APP_GUARD } from '@nestjs/core';
+import { RateLimitModule } from './infrastructure/rate-limit.module';
+import { AuthThrottlerMiddleware } from './infrastructure/auth-throttler.middleware';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { APP_GUARD } from '@nestjs/core';
     PurchaseRequestsModule,
     ApprovalsModule,
     ConfigModule.forRoot(),
+    RateLimitModule,
     AuthModule.forRootAsync({
       imports: [DatabaseModule, ConfigModule],
       useFactory: (database: NodePgDatabase, configService: ConfigService) => ({
@@ -48,4 +51,14 @@ import { APP_GUARD } from '@nestjs/core';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthThrottlerMiddleware)
+      .forRoutes({ path: '/api/auth/*', method: RequestMethod.ALL });
+  }
+}
+
+
+
+

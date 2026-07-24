@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../auth/schema';
@@ -43,6 +43,19 @@ export class PermissionService {
       .where(eq(schema.user.id, userId));
 
     return new Set(roleBased.map((r) => r.name as PermissionName));
+  }
+
+  async checkRequestAccess(userId: string, requestedByUserId: string): Promise<void> {
+    const permissions = await this.resolvePermissions(userId);
+    const isOwner = requestedByUserId === userId;
+    const isApprover =
+      permissions.has('approve_request_initial') ||
+      permissions.has('approve_request_final');
+    const canViewAll = permissions.has('view_all_records');
+
+    if (!isOwner && !isApprover && !canViewAll) {
+      throw new UnauthorizedException('You do not have access to this request.');
+    }
   }
 
   resolveAllPermissions(): PermissionName[] {

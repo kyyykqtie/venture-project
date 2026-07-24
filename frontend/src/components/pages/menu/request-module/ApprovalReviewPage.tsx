@@ -186,6 +186,7 @@ export function ApprovalReviewPage() {
                       variant={decisionMode === "approve" ? "default" : "outline"}
                       className="justify-start"
                       onClick={() => setDecisionMode("approve")}
+                      disabled={isSubmitting}
                     >
                       <CheckCircle2 className="mr-2 size-4" />
                       Approve ({canActFinal ? "Final" : "Initial"})
@@ -195,6 +196,7 @@ export function ApprovalReviewPage() {
                       variant={decisionMode === "return" ? "secondary" : "outline"}
                       className="justify-start"
                       onClick={() => setDecisionMode("return")}
+                      disabled={isSubmitting}
                     >
                       <OctagonAlert className="mr-2 size-4" />
                       Return for Revision
@@ -211,13 +213,15 @@ export function ApprovalReviewPage() {
                       value={decisionNote}
                       onChange={(event) => setDecisionNote(event.target.value)}
                       placeholder="Reason for returning this request."
+                      disabled={isSubmitting}
                     />
                   </div>
                 ) : null}
 
-                <Button className="w-full" size="sm" onClick={() => setConfirmOpen(true)}>
+                <Button className="w-full" size="sm" onClick={() => setConfirmOpen(true)} disabled={isSubmitting}>
                   {decisionMode === "approve" ? "Approve and Continue" : "Return for Revision"}
                 </Button>
+
               </>
             )}
           </CardContent>

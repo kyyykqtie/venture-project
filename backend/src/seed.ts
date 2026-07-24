@@ -11,6 +11,7 @@ import { admin } from 'better-auth/plugins';
 import * as authSchema from './auth/schema';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { PERMISSIONS } from './role/permission.constants';
 
 const DEFAULT_DEPARTMENTS = [
   {
@@ -70,21 +71,7 @@ async function seed() {
 
   // ── Seed permissions + admin role ───────────────────────────────────────────
   console.log('\n🔐 Seeding permissions and admin role...');
-  const PERMISSIONS = [
-    'create_request',
-    'approve_request_initial',
-    'approve_request_final',
-    'process_canvass',
-    'approve_canvass',
-    'generate_po',
-    'receive_goods',
-    'manage_users',
-    'manage_roles_permissions',
-    'manage_departments',
-    'override_approvals',
-    'view_all_records',
-    'system_configuration',
-  ];
+  // PERMISSIONS array imported from permission.constants.ts
 
   // ensure permissions
   for (const name of PERMISSIONS) {
